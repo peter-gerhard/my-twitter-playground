@@ -4,10 +4,15 @@ object TweetCommands {
 
   trait TweetCommand
 
-  case class CreateTweetCommand(authorId: String, body: String) extends TweetCommand
-  case class RetweetTweetCommand(userId: String) extends TweetCommand
-  case class UndoRetweetTweetCommand(userId: String) extends TweetCommand
-  case class LikeTweetCommand(userId: String) extends TweetCommand
-  case class UndoLikeTweetCommand(userId: String) extends TweetCommand
+  case class PostTweetCommand(authorId: String, body: String) extends TweetCommand
+
+  case class AddRepostCommand(fromId: String) extends TweetCommand
+
+  case class RemoveRepostCommand(fromId: String) extends TweetCommand
+
+  case class AddLikeCommand(fromId: String) extends TweetCommand
+
+  case class RemoveLikeCommand(fromId: String) extends TweetCommand
+
   case object DeleteTweetCommand extends TweetCommand
 }

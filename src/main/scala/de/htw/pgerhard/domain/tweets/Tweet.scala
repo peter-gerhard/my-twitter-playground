@@ -10,15 +10,16 @@ case class Tweet(
     likedBy: Set[String],
     retweetedBy: Set[String]) {
 
-  def updated(event: TweetUpdatedEvent): Tweet = event match {
-    case TweetRetweetedEvent(tweetId, userId) ⇒ copy(retweetedBy = retweetedBy + userId)
+  def updated(event: TweetEvent): Tweet = event match {
+    case TweetRetweetedEvent(tweetId, userId, _) ⇒ copy(retweetedBy = retweetedBy + userId)
     case RetweetTweetUndoneEvent(tweetId, userId) ⇒ copy(retweetedBy = retweetedBy - userId)
     case TweetLikedEvent(tweetId, userId) ⇒ copy(likedBy = likedBy + userId)
     case LikeTweetUndoneEvent(tweetId, userId) ⇒ copy(likedBy = likedBy - userId)
+    case _ ⇒ throw new IllegalArgumentException
   }
 }
 
 object Tweet {
-  def fromEvent(event: TweetCreatedEvent) =
+  def fromEvent(event: TweetPostedEvent) =
     Tweet(event.tweetId, event.authorId, event.timestamp, event.body, Set.empty, Set.empty)
 }

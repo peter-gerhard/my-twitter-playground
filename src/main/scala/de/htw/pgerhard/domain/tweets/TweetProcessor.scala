@@ -3,7 +3,6 @@ package de.htw.pgerhard.domain.tweets
 import akka.actor.ActorLogging
 import akka.actor.Status.Failure
 import akka.persistence._
-import de.htw.pgerhard.Get
 import de.htw.pgerhard.domain.tweets.TweetCommands._
 import de.htw.pgerhard.domain.tweets.TweetEvents._
 
@@ -14,35 +13,32 @@ class TweetProcessor(val persistenceId: String) extends PersistentActor with Act
   override def receiveCommand: Receive = nonExistent orElse handlePersistenceMessages
 
   private def nonExistent: Receive = {
-    case CreateTweetCommand(authorId, body) ⇒
-      persist(TweetCreatedEvent(persistenceId, authorId, body, System.currentTimeMillis())) { event ⇒
+    case PostTweetCommand(authorId, body) ⇒
+      persist(TweetPostedEvent(persistenceId, authorId, body, System.currentTimeMillis())) { event ⇒
         handleCreation(event)
         reportState()
       }
     case _: TweetCommand ⇒
       reportState()
-
-    case Get ⇒
-      reportState()
   }
 
   private def existent: Receive = {
-    case RetweetTweetCommand(userId) ⇒
-      persist(TweetRetweetedEvent(persistenceId, userId)) { event ⇒
+    case AddRepostCommand(userId) ⇒
+      persist(TweetRetweetedEvent(persistenceId, userId, System.currentTimeMillis())) { event ⇒
         handleUpdate(event)
         reportState()
       }
-    case UndoRetweetTweetCommand(userId) ⇒
+    case RemoveRepostCommand(userId) ⇒
       persist(RetweetTweetUndoneEvent(persistenceId, userId)) { event ⇒
         handleUpdate(event)
         reportState()
       }
-    case LikeTweetCommand(userId) ⇒
+    case AddLikeCommand(userId) ⇒
       persist(TweetLikedEvent(persistenceId, userId)) { event ⇒
         handleUpdate(event)
         reportState()
       }
-    case UndoLikeTweetCommand(userId) ⇒
+    case RemoveLikeCommand(userId) ⇒
       persist(LikeTweetUndoneEvent(persistenceId, userId)) { event ⇒
         handleUpdate(event)
         reportState()
@@ -52,20 +48,16 @@ class TweetProcessor(val persistenceId: String) extends PersistentActor with Act
         handleDeletion()
         reportState()
       }
-    case Get ⇒
-      reportState()
   }
 
   override def receiveRecover: Receive = {
-    case event: TweetCreatedEvent ⇒ handleCreation(event)
-    case event: TweetUpdatedEvent ⇒ handleUpdate(event)
+    case event: TweetPostedEvent ⇒ handleCreation(event)
     case TweetDeletedEvent ⇒ handleDeletion()
+    case event: TweetEvent ⇒ handleUpdate(event)
 
     case SnapshotOffer(md, snapshot) ⇒
       restoreFromSnapshot(snapshot.asInstanceOf[Option[Tweet]])
       log.debug(s"state initialized: $state (metadata = $md)")
-    case RecoveryFailure(e) =>
-      log.debug(s"recovery failed (error = ${e.getMessage})")
   }
 
   def handlePersistenceMessages: Receive = {
@@ -73,16 +65,14 @@ class TweetProcessor(val persistenceId: String) extends PersistentActor with Act
       log.debug(s"snapshot saved (metadata = $md)")
     case SaveSnapshotFailure(md, e) =>
       log.debug(s"snapshot saving failed (metadata = $md, error = ${e.getMessage})")
-    case PersistenceFailure(payload, snr, e) =>
-      log.debug(s"persistence failed (payload = $payload, sequenceNr = $snr, error = ${e.getMessage})")
   }
 
-  private def handleCreation(event: TweetCreatedEvent): Unit = {
+  private def handleCreation(event: TweetPostedEvent): Unit = {
     state = Some(Tweet.fromEvent(event))
     context.become(existent orElse handlePersistenceMessages)
   }
 
-  private def handleUpdate(event: TweetUpdatedEvent): Unit = {
+  private def handleUpdate(event: TweetEvent): Unit = {
     state = state.map(_.updated(event))
   }
 

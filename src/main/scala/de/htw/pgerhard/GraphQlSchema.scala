@@ -27,7 +27,7 @@ object GraphQlSchema {
           resolve = _.value.id),
         Field("author", OptionType(UserType),
           Some("The id of the author."),
-          resolve = u ⇒ u.ctx.users.getById(u.value.authorId)),
+          resolve = ctx ⇒ ctx.ctx.users.getById(ctx.value.authorId)),
         Field("body", StringType,
           Some("The body of the tweet."),
           resolve = _.value.body),
@@ -55,17 +55,20 @@ object GraphQlSchema {
         Field("name", StringType,
           Some("The name of the user."),
           resolve = _.value.name),
-        Field("follows", ListType(StringType),
-          Some("The users which this user follows."),
-          resolve = _.value.follows)))
+        Field("following", ListType(UserType),
+          Some("The users this user is following."),
+          resolve = ctx ⇒ users.deferSeq(ctx.value.following.toList)),
+        Field("followers", ListType(UserType),
+          Some("The users who follow this user."),
+          resolve = ctx ⇒ users.deferSeq(ctx.value.followers.toList))))
 
   val TweetIdArg = Argument("tweetId", StringType, description = "Id of the tweet")
   val AuthorArg = Argument("authorId", StringType, description = "Id of the author")
   val UserArg = Argument("userId", StringType, description = "Id of the user")
   val BodyArg = Argument("body", StringType, description = "The body of the tweet")
 
-  val UserIdArg = Argument("userId", StringType, description = "Id of the user")
-  val FollowIdArg = Argument("followId", StringType, description = "Id of the user to follow")
+  val UserIdArg = Argument("userId", StringType, description = "Id of the subject user")
+  val followingIdArg = Argument("followingId", StringType, description = "Id of the user to follow")
   val HandleArg = Argument("handle", StringType, description = "handle of the user")
   val NameArg = Argument("name", StringType, description = "name of the user")
 
@@ -103,16 +106,27 @@ object GraphQlSchema {
       // User Mutations
       Field("registerUser", OptionType(UserType),
         arguments = HandleArg :: NameArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.users.create(ctx.arg(HandleArg), ctx.arg(NameArg))),
+        resolve = (ctx) ⇒ ctx.ctx.users.register(ctx.arg(HandleArg), ctx.arg(NameArg))),
       Field("setUserName", OptionType(UserType),
         arguments = UserIdArg :: NameArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.setName(ctx.arg(UserIdArg), ctx.arg(NameArg))),
       Field("followUser", OptionType(UserType),
-        arguments = UserIdArg :: FollowIdArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.users.follow(ctx.arg(UserIdArg), ctx.arg(FollowIdArg))),
+        arguments = UserIdArg :: followingIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.users.addToFollowing(ctx.arg(UserIdArg), ctx.arg(followingIdArg))),
+      Field("unfollowUser", OptionType(UserType),
+        arguments = UserIdArg :: followingIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.users.removeFromFollowing(ctx.arg(UserIdArg), ctx.arg(followingIdArg))),
       Field("deleteUser", OptionType(UserType),
         arguments = UserIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.delete(ctx.arg(UserIdArg)))))
+
+//  val SubscriptionType = ObjectType("Subscription", fields[Environment, Unit](
+//    Field.subs("test", TweetType,
+//      arguments = Nil,
+//      resolve = ctx ⇒ ctx
+//    )
+//  )
+
 
   val schema = Schema(QueryType, Some(MutationType))
 }

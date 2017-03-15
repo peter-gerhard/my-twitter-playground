@@ -3,7 +3,7 @@ package de.htw.pgerhard.domain.tweets
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import de.htw.pgerhard.Get
+import de.htw.pgerhard.domain.Get
 import de.htw.pgerhard.domain.tweets.TweetCommands._
 import de.htw.pgerhard.domain.tweets.TweetRepository.Envelope
 
@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
-class TweetContext(val repo: ActorRef)(implicit ec: ExecutionContext) {
+class TweetConnector(val repo: ActorRef)(implicit ec: ExecutionContext) {
 
   private implicit val timeout = Timeout(5 seconds)
 
@@ -22,19 +22,19 @@ class TweetContext(val repo: ActorRef)(implicit ec: ExecutionContext) {
     Future.sequence(ids.map(id ⇒ getById(id))).map(_.flatten)
 
   def create(authorId: String, body: String): Future[Option[Tweet]] =
-    sendMessage(CreateTweetCommand(authorId, body))
+    sendMessage(PostTweetCommand(authorId, body))
 
   def retweet(tweetId: String, userId: String): Future[Option[Tweet]] =
-    sendMessage(Envelope(tweetId, RetweetTweetCommand(userId)))
+    sendMessage(Envelope(tweetId, AddRepostCommand(userId)))
 
   def undoRetweet(tweetId: String, userId: String): Future[Option[Tweet]] =
-    sendMessage(Envelope(tweetId, UndoRetweetTweetCommand(userId)))
+    sendMessage(Envelope(tweetId, RemoveRepostCommand(userId)))
 
   def like(tweetId: String, userId: String): Future[Option[Tweet]] =
-    sendMessage(Envelope(tweetId, LikeTweetCommand(userId)))
+    sendMessage(Envelope(tweetId, AddLikeCommand(userId)))
 
   def undoLike(tweetId: String, userId: String): Future[Option[Tweet]] =
-    sendMessage(Envelope(tweetId, UndoLikeTweetCommand(userId)))
+    sendMessage(Envelope(tweetId, RemoveLikeCommand(userId)))
 
   def delete(tweetId: String): Future[Option[Tweet]] =
     sendMessage(Envelope(tweetId, DeleteTweetCommand))

@@ -2,10 +2,13 @@ package de.htw.pgerhard
 
 import akka.actor.{ActorSystem, Props}
 import akka.stream.ActorMaterializer
-import de.htw.pgerhard.domain.tweets.{TweetContext, TweetRepository}
-import de.htw.pgerhard.domain.users.{UserContext, UserRepository}
+import akka.util.Timeout
+import de.htw.pgerhard.domain.tweets.{TweetConnector, TweetRepository}
+import de.htw.pgerhard.domain.users.{UserConnector, UserRepository}
 
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
+import scala.language.postfixOps
 
 trait Environment {
 
@@ -13,8 +16,8 @@ trait Environment {
   implicit def actorMaterializer: ActorMaterializer
   implicit def executionContext: ExecutionContext
 
-  def users: UserContext
-  def tweets: TweetContext
+  def users: UserConnector
+  def tweets: TweetConnector
 }
 
 class DefaultEnvironment extends Environment {
@@ -25,7 +28,9 @@ class DefaultEnvironment extends Environment {
 
   override implicit def executionContext: ExecutionContext = actorSystem.dispatcher
 
-  override def users: UserContext = new UserContext(actorSystem.actorOf(Props[UserRepository]))
+  implicit val timeout = Timeout(5 seconds)
 
-  override def tweets: TweetContext = new TweetContext(actorSystem.actorOf(Props[TweetRepository]))
+  override def users: UserConnector = new UserConnector(actorSystem.actorOf(Props[UserRepository]))
+
+  override def tweets: TweetConnector = new TweetConnector(actorSystem.actorOf(Props[TweetRepository]))
 }
