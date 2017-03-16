@@ -21,7 +21,10 @@ class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[T
 
   override def receiveBeforeInitialization: Receive = {
     case CreateTweetCommand(authorId, body) ⇒
-      persist(TweetCreatedEvent(persistenceId, authorId, body, timestamp))
+      persist(TweetCreatedEvent(persistenceId, authorId, body, timestamp)) { event ⇒
+        handleCreation(event)
+        reportState()
+      }
     case _: TweetCommand ⇒
       reportState()
   }

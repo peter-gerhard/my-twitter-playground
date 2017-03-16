@@ -10,6 +10,7 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
 
   def persistenceId: String
   def aggregateRootFactory: (CreatedEvent) ⇒ A
+  def receiveRecover: Receive
   def receiveBeforeInitialization: Receive
   def receiveWhenInitialized: Receive
 

@@ -6,13 +6,9 @@ import akka.util.Timeout
 import de.htw.pgerhard.domain.{Envelope, Get}
 import de.htw.pgerhard.domain.tweets.TweetCommands._
 
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
 
-class TweetConnector(val repo: ActorRef)(implicit ec: ExecutionContext) {
-
-  private implicit val timeout = Timeout(5 seconds)
+class TweetConnector(val repo: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
 
   def getById(id: String): Future[Option[Tweet]] =
     sendMessage(Envelope(id, Get))

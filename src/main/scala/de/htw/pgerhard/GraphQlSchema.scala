@@ -1,9 +1,13 @@
 package de.htw.pgerhard
 
+import de.htw.pgerhard.domain.timeline.UserTimeline
 import de.htw.pgerhard.domain.tweets.Tweet
 import de.htw.pgerhard.domain.users.User
+import de.htw.pgerhard.util.FutureOption
 import sangria.execution.deferred.{Fetcher, HasId}
 import sangria.schema.{Field, _}
+
+import scala.concurrent.Future
 
 object GraphQlSchema {
 
@@ -72,6 +76,8 @@ object GraphQlSchema {
   val HandleArg = Argument("handle", StringType, description = "handle of the user")
   val NameArg = Argument("name", StringType, description = "name of the user")
 
+  val UserTimelineIdArg = Argument("timelineId", StringType, description = "Id of the user timeline")
+
   val QueryType = ObjectType(
     "Query", fields[Environment, Unit](
       Field("tweet", OptionType(TweetType),
@@ -83,18 +89,40 @@ object GraphQlSchema {
 
   val MutationType = ObjectType(
     "Mutation", fields[Environment, Unit](
-//      // Tweet Mutations
-//      Field("createTweet", OptionType(TweetType),
-//        arguments = AuthorArg :: BodyArg :: Nil,
-//        resolve = (ctx) ⇒ ctx.ctx.tweets.create(ctx.arg(AuthorArg), ctx.arg(BodyArg))),
-//      Field("deleteTweet", OptionType(TweetType),
-//        arguments =  TweetIdArg :: Nil,
-//        resolve = (ctx) ⇒ ctx.ctx.tweets.delete(ctx.arg(TweetIdArg))),
+      // UserTimeline Mutations
+      Field("postTweet", OptionType(TweetType),
+        arguments = UserTimelineIdArg :: AuthorArg :: BodyArg :: Nil,
+        resolve = (ctx) ⇒ {
+          import ctx.ctx.executionContext
+          (for {
+            tweet ← FutureOption(ctx.ctx.tweets.create(ctx.arg(AuthorArg), ctx.arg(BodyArg)))
+            _     ← FutureOption(ctx.ctx.userTimelines.postTweet(ctx.arg(UserTimelineIdArg), tweet.id))
+          } yield tweet).get
+        }
+      ),
+      Field("deleteTweet", OptionType(TweetType),
+        arguments = UserTimelineIdArg :: TweetIdArg :: Nil,
+        resolve = (ctx) ⇒ {
+          import ctx.ctx.executionContext
+          (for {
+            _     ← FutureOption(ctx.ctx.userTimelines.deleteTweet(ctx.arg(UserTimelineIdArg), ctx.arg(TweetIdArg)))
+            tweet ← FutureOption(ctx.ctx.tweets.delete(ctx.arg(TweetIdArg)))
+          } yield tweet).get
+        }
+      ),
 
       // User Mutations
       Field("registerUser", OptionType(UserType),
         arguments = HandleArg :: NameArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.users.register(ctx.arg(HandleArg), ctx.arg(NameArg))),
+        resolve = (ctx) ⇒ {
+          import ctx.ctx.executionContext
+          // move orchestration in connector!
+          (for {
+            user ← FutureOption(ctx.ctx.users.register(ctx.arg(HandleArg), ctx.arg(NameArg)))
+            _    ← FutureOption(ctx.ctx.userTimelines.create(user.id))
+          } yield user).get
+        }
+      ),
       Field("setUserName", OptionType(UserType),
         arguments = UserIdArg :: NameArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.setName(ctx.arg(UserIdArg), ctx.arg(NameArg))),

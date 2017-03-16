@@ -3,6 +3,7 @@ package de.htw.pgerhard
 import akka.actor.{ActorSystem, Props}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
+import de.htw.pgerhard.domain.timeline.{UserTimelineConnector, UserTimelineRepository}
 import de.htw.pgerhard.domain.tweets.{TweetConnector, TweetRepository}
 import de.htw.pgerhard.domain.users.{UserConnector, UserRepository}
 
@@ -18,6 +19,7 @@ trait Environment {
 
   def users: UserConnector
   def tweets: TweetConnector
+  def userTimelines: UserTimelineConnector
 }
 
 class DefaultEnvironment extends Environment {
@@ -33,4 +35,6 @@ class DefaultEnvironment extends Environment {
   override def users: UserConnector = new UserConnector(actorSystem.actorOf(Props[UserRepository]))
 
   override def tweets: TweetConnector = new TweetConnector(actorSystem.actorOf(Props[TweetRepository]))
+
+  override def userTimelines = new UserTimelineConnector(actorSystem.actorOf(Props[UserTimelineRepository]))
 }

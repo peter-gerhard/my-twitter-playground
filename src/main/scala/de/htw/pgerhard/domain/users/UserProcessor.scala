@@ -20,8 +20,8 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
   }
 
   override def receiveBeforeInitialization: Receive = {
-    case RegisterUserCommand(handle, name) ⇒
-      persist(UserRegisteredEvent(persistenceId, handle, name)) { event ⇒
+    case cmd: RegisterUserCommand ⇒
+      persist(UserRegisteredEvent(persistenceId, cmd.handle, cmd.name)) { event ⇒
         handleCreation(event)
         reportState()
       }
@@ -30,34 +30,34 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
   }
 
   override def receiveWhenInitialized: Receive = {
-    case SetUserNameCommand(name) ⇒
-      persist(UserNameSetEvent(persistenceId, name)) { event ⇒
+    case cmd: SetUserNameCommand ⇒
+      persist(UserNameSetEvent(persistenceId, cmd.name)) { event ⇒
         handleUpdate(event)
         reportState()
       }
-    case FollowUserCommand(subscriptionId) ⇒
-      state.filter(!_.following.contains(subscriptionId)) foreach { _ ⇒
-        persist(UserFollowedEvent(persistenceId, subscriptionId)) { event ⇒
+    case cmd: FollowUserCommand ⇒
+      state.filter(!_.following.contains(cmd.userId)) foreach { _ ⇒
+        persist(UserFollowedEvent(persistenceId, cmd.userId)) { event ⇒
           handleUpdate(event)
           reportState()
         }
       }
-    case UnfollowUserCommand(subscriptionId) ⇒
-      state.filter(_.following.contains(subscriptionId)) foreach { _ ⇒
-        persist(UserUnfollowedEvent(persistenceId, subscriptionId)) { event ⇒
+    case cmd: UnfollowUserCommand ⇒
+      state.filter(_.following.contains(cmd.userId)) foreach { _ ⇒
+        persist(UserUnfollowedEvent(persistenceId, cmd.userId)) { event ⇒
           handleUpdate(event)
           reportState()
         }
       }
-    case AddFollowerCommand(subscriberId) ⇒
-      state.filter(!_.followers.contains(subscriberId)) foreach { _ ⇒
-        persist(FollowerAddedEvent(persistenceId, subscriberId)) { event ⇒
+    case cmd: AddFollowerCommand ⇒
+      state.filter(!_.followers.contains(cmd.userId)) foreach { _ ⇒
+        persist(FollowerAddedEvent(persistenceId, cmd.userId)) { event ⇒
           handleUpdate(event)
         }
       }
-    case RemoveFollowerCommand(subscriberId) ⇒
-      state.filter(_.followers.contains(subscriberId)) foreach { _ ⇒
-        persist(FollowerRemovedEvent(persistenceId, subscriberId)) { event ⇒
+    case cmd: RemoveFollowerCommand ⇒
+      state.filter(_.followers.contains(cmd.userId)) foreach { _ ⇒
+        persist(FollowerRemovedEvent(persistenceId, cmd.userId)) { event ⇒
           handleUpdate(event)
         }
       }

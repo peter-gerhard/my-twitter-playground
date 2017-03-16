@@ -22,6 +22,6 @@ case class Tweet(
 }
 
 object Tweet {
-  def fromEvent(event: TweetCreatedEvent) =
-    Tweet(event.id, event.authorId, event.timestamp, event.body, Set.empty, Set.empty)
+  def fromEvent(ev: TweetCreatedEvent) =
+    Tweet(ev.id, ev.authorId, ev.timestamp, ev.body, Set.empty, Set.empty)
 }
