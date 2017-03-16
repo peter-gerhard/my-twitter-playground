@@ -1,19 +1,21 @@
 package de.htw.pgerhard.domain.tweets
 
+import de.htw.pgerhard.domain.generic.Event
+
 object TweetEvents {
 
-  trait TweetEvent
+  sealed trait TweetEvent extends Event[Tweet]
 
-  case class TweetPostedEvent(tweetId: String, authorId: String, body: String, timestamp: Long) extends TweetEvent
+  case class TweetCreatedEvent(id: String, authorId: String, body: String, timestamp: Long) extends TweetEvent
 
-  case class TweetRetweetedEvent(tweetId: String, userId: String, timestamp: Long) extends TweetEvent
+//  case class RetweeterAddedEvent(id: String, userId: String) extends TweetEvent
+//
+//  case class RetweeterRemovedEvent(id: String, userId: String) extends TweetEvent
+//
+//  case class LikerAddedEvent(id: String, userId: String) extends TweetEvent
+//
+//  case class LikerRemovedEvent(id: String, userId: String) extends TweetEvent
 
-  case class RetweetTweetUndoneEvent(tweetId: String, userId: String) extends TweetEvent
-
-  case class TweetLikedEvent(tweetId: String, userId: String) extends TweetEvent
-
-  case class LikeTweetUndoneEvent(tweetId: String, userId: String) extends TweetEvent
-
-  case class TweetDeletedEvent(tweetId: String) extends TweetEvent
+  case class TweetDeletedEvent(id: String) extends TweetEvent
 
 }

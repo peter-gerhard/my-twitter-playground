@@ -1,18 +1,20 @@
 package de.htw.pgerhard.domain.tweets
 
+import de.htw.pgerhard.domain.generic.Command
+
 object TweetCommands {
 
-  trait TweetCommand
+  sealed trait TweetCommand extends Command[Tweet]
 
-  case class PostTweetCommand(authorId: String, body: String) extends TweetCommand
+  case class CreateTweetCommand(authorId: String, body: String) extends TweetCommand
 
-  case class AddRepostCommand(fromId: String) extends TweetCommand
-
-  case class RemoveRepostCommand(fromId: String) extends TweetCommand
-
-  case class AddLikeCommand(fromId: String) extends TweetCommand
-
-  case class RemoveLikeCommand(fromId: String) extends TweetCommand
+//  case class AddRetweeterCommand(userId: String) extends TweetCommand
+//
+//  case class RemoveRetweeterCommand(userId: String) extends TweetCommand
+//
+//  case class AddLikerCommand(userId: String) extends TweetCommand
+//
+//  case class RemoveLikerCommand(userId: String) extends TweetCommand
 
   case object DeleteTweetCommand extends TweetCommand
 }

@@ -10,13 +10,13 @@ object UserCommands {
 
   case class SetUserNameCommand(name: String) extends UserCommand
 
-  case class AddToFollowingCommand(userId: String) extends UserCommand
+  case class FollowUserCommand(userId: String) extends UserCommand
 
-  case class RemoveFromFollowingCommand(userId: String) extends UserCommand
+  case class UnfollowUserCommand(userId: String) extends UserCommand
 
-  case class AddToFollowersCommand(userId: String) extends UserCommand
+  case class AddFollowerCommand(userId: String) extends UserCommand
 
-  case class RemoveFromFollowersCommand(userId: String) extends UserCommand
+  case class RemoveFollowerCommand(userId: String) extends UserCommand
 
   case object DeleteUserCommand extends UserCommand
 }

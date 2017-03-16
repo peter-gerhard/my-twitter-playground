@@ -11,9 +11,9 @@ class UserRepository extends Repository[User] {
   override def receive: Receive = {
     case cmd: RegisterUserCommand ⇒
       getProcessor(randomId) forward cmd
-    case Envelope(id, cmd: AddToFollowingCommand) ⇒
+    case Envelope(id, cmd: FollowUserCommand) ⇒
       getProcessor(id) forward cmd
-      getProcessor(cmd.userId) ! AddToFollowersCommand(id)
+      getProcessor(cmd.userId) ! AddFollowerCommand(id)
     case Envelope(id, cmd) ⇒
       getProcessor(id) forward cmd
   }

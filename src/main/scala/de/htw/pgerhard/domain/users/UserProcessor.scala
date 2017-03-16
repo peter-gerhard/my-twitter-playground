@@ -35,29 +35,29 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
         handleUpdate(event)
         reportState()
       }
-    case AddToFollowingCommand(subscriptionId) ⇒
+    case FollowUserCommand(subscriptionId) ⇒
       state.filter(!_.following.contains(subscriptionId)) foreach { _ ⇒
-        persist(UserAddedToFollowingEvent(persistenceId, subscriptionId)) { event ⇒
+        persist(UserFollowedEvent(persistenceId, subscriptionId)) { event ⇒
           handleUpdate(event)
           reportState()
         }
       }
-    case RemoveFromFollowingCommand(subscriptionId) ⇒
+    case UnfollowUserCommand(subscriptionId) ⇒
       state.filter(_.following.contains(subscriptionId)) foreach { _ ⇒
-        persist(UserRemovedFromFollowingEvent(persistenceId, subscriptionId)) { event ⇒
+        persist(UserUnfollowedEvent(persistenceId, subscriptionId)) { event ⇒
           handleUpdate(event)
           reportState()
         }
       }
-    case AddToFollowersCommand(subscriberId) ⇒
+    case AddFollowerCommand(subscriberId) ⇒
       state.filter(!_.followers.contains(subscriberId)) foreach { _ ⇒
-        persist(UserAddedToFollowersEvent(persistenceId, subscriberId)) { event ⇒
+        persist(FollowerAddedEvent(persistenceId, subscriberId)) { event ⇒
           handleUpdate(event)
         }
       }
-    case RemoveFromFollowersCommand(subscriberId) ⇒
+    case RemoveFollowerCommand(subscriberId) ⇒
       state.filter(_.followers.contains(subscriberId)) foreach { _ ⇒
-        persist(UserRemovedFromFollowersEvent(persistenceId, subscriberId)) { event ⇒
+        persist(FollowerRemovedEvent(persistenceId, subscriberId)) { event ⇒
           handleUpdate(event)
         }
       }

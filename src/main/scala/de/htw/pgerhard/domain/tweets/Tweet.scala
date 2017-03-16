@@ -1,5 +1,6 @@
 package de.htw.pgerhard.domain.tweets
 
+import de.htw.pgerhard.domain.generic.{AggregateRoot, Event}
 import de.htw.pgerhard.domain.tweets.TweetEvents._
 
 case class Tweet(
@@ -7,19 +8,20 @@ case class Tweet(
     authorId: String,
     timestamp: Long,
     body: String,
-    likedBy: Set[String],
-    retweetedBy: Set[String]) {
+    likers: Set[String],
+    retweeters: Set[String])
+  extends AggregateRoot[Tweet] {
 
-  def updated(event: TweetEvent): Tweet = event match {
-    case TweetRetweetedEvent(tweetId, userId, _) ⇒ copy(retweetedBy = retweetedBy + userId)
-    case RetweetTweetUndoneEvent(tweetId, userId) ⇒ copy(retweetedBy = retweetedBy - userId)
-    case TweetLikedEvent(tweetId, userId) ⇒ copy(likedBy = likedBy + userId)
-    case LikeTweetUndoneEvent(tweetId, userId) ⇒ copy(likedBy = likedBy - userId)
+  def updated(event: Event[Tweet]): Tweet = event match {
+//    case RetweeterAddedEvent(tweetId, userId, _) ⇒ copy(retweeters = retweeters + userId)
+//    case RetweeterRemovedEvent(tweetId, userId) ⇒ copy(retweeters = retweeters - userId)
+//    case LikerAddedEvent(tweetId, userId) ⇒ copy(likers = likers + userId)
+//    case LikerRemovedEvent(tweetId, userId) ⇒ copy(likers = likers - userId)
     case _ ⇒ throw new IllegalArgumentException
   }
 }
 
 object Tweet {
-  def fromEvent(event: TweetPostedEvent) =
-    Tweet(event.tweetId, event.authorId, event.timestamp, event.body, Set.empty, Set.empty)
+  def fromEvent(event: TweetCreatedEvent) =
+    Tweet(event.id, event.authorId, event.timestamp, event.body, Set.empty, Set.empty)
 }

@@ -24,10 +24,10 @@ class UserConnector(repo: ActorRef)(implicit ec: ExecutionContext, timeout: Time
     sendMessage(Envelope(id, SetUserNameCommand(name)))
 
   def addToFollowing(id: String, followingId: String): Future[Option[User]] =
-    sendMessage(Envelope(id, AddToFollowingCommand(followingId)))
+    sendMessage(Envelope(id, FollowUserCommand(followingId)))
 
   def removeFromFollowing(id: String, followingId: String): Future[Option[User]] =
-    sendMessage(Envelope(id, RemoveFromFollowingCommand(followingId)))
+    sendMessage(Envelope(id, UnfollowUserCommand(followingId)))
 
   def delete(id: String): Future[Option[User]] =
     sendMessage(Envelope(id, DeleteUserCommand))

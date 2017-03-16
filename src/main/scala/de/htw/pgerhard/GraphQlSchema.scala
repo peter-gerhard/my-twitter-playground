@@ -36,10 +36,10 @@ object GraphQlSchema {
           resolve = _.value.timestamp),
         Field("likeCount", IntType,
           Some("The number of people who liked this tweet."),
-          resolve = _.value.likedBy.size),
+          resolve = _.value.likers.size),
         Field("retweetCount", IntType,
           Some("The number of people who retweeted this tweet."),
-          resolve = _.value.retweetedBy.size)))
+          resolve = _.value.retweeters.size)))
 
   lazy val UserType: ObjectType[Environment, User] =
     ObjectType(
@@ -83,25 +83,13 @@ object GraphQlSchema {
 
   val MutationType = ObjectType(
     "Mutation", fields[Environment, Unit](
-      // Tweet Mutations
-      Field("tweet", OptionType(TweetType),
-        arguments = AuthorArg :: BodyArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.tweets.create(ctx.arg(AuthorArg), ctx.arg(BodyArg))),
-      Field("retweet", OptionType(TweetType),
-        arguments =  TweetIdArg :: UserArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.tweets.retweet(ctx.arg(TweetIdArg), ctx.arg(UserArg))),
-      Field("undoRetweet", OptionType(TweetType),
-        arguments =  TweetIdArg :: UserArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.tweets.undoRetweet(ctx.arg(TweetIdArg), ctx.arg(UserArg))),
-      Field("like", OptionType(TweetType),
-        arguments =  TweetIdArg :: UserArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.tweets.like(ctx.arg(TweetIdArg), ctx.arg(UserArg))),
-      Field("undoLike", OptionType(TweetType),
-        arguments =  TweetIdArg :: UserArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.tweets.undoLike(ctx.arg(TweetIdArg), ctx.arg(UserArg))),
-      Field("deleteTweet", OptionType(TweetType),
-        arguments =  TweetIdArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.tweets.delete(ctx.arg(TweetIdArg))),
+//      // Tweet Mutations
+//      Field("createTweet", OptionType(TweetType),
+//        arguments = AuthorArg :: BodyArg :: Nil,
+//        resolve = (ctx) ⇒ ctx.ctx.tweets.create(ctx.arg(AuthorArg), ctx.arg(BodyArg))),
+//      Field("deleteTweet", OptionType(TweetType),
+//        arguments =  TweetIdArg :: Nil,
+//        resolve = (ctx) ⇒ ctx.ctx.tweets.delete(ctx.arg(TweetIdArg))),
 
       // User Mutations
       Field("registerUser", OptionType(UserType),

@@ -13,14 +13,14 @@ case class User(
 
   override def updated(event: Event[User]): User = event match {
     case e: UserNameSetEvent ⇒ copy(name = e.name)
-    case e: UserAddedToFollowingEvent ⇒ copy(following = following + e.followingId)
-    case e: UserRemovedFromFollowingEvent ⇒ copy(following = following - e.followingId)
-    case e: UserAddedToFollowersEvent ⇒ copy(followers = followers + e.followerId)
-    case e: UserRemovedFromFollowersEvent ⇒ copy(followers = followers - e.followerId)
+    case e: UserFollowedEvent ⇒ copy(following = following + e.userId)
+    case e: UserUnfollowedEvent ⇒ copy(following = following - e.userId)
+    case e: FollowerAddedEvent ⇒ copy(followers = followers + e.userId)
+    case e: FollowerRemovedEvent ⇒ copy(followers = followers - e.userId)
     case e ⇒ throw new IllegalArgumentException(s"Event '$e' does not apply to class User")
   }
 }
 
 object User {
-  def fromEvent(ev: UserRegisteredEvent) = User(ev.userId, ev.handle, ev.name, Set.empty, Set.empty)
+  def fromEvent(ev: UserRegisteredEvent) = User(ev.id, ev.handle, ev.name, Set.empty, Set.empty)
 }
