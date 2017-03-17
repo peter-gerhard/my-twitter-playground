@@ -19,4 +19,7 @@ trait Repository[A <: AggregateRoot[A], Error] extends Actor with ActorLogging {
 
   protected def randomId: String =
     UUID.randomUUID().toString
+
+  protected def viewId(persistenceId: String): String =
+    s"view_$persistenceId"
 }
