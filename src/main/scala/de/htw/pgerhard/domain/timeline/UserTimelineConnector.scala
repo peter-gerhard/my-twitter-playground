@@ -52,7 +52,7 @@ class UserTimelineConnector(
     } yield true
 
   def deleteForUser(userId: String): Future[Option[UserTimeline]] =
-    sendMessage(Envelope(timelineId(userId), DeleteUserTimeLineCommand))
+    sendMessage(Envelope(timelineId(userId), DeleteUserTimelineCommand))
 
   private def sendMessage(message: Any) =
     (userTimelineRepo ? message).mapTo[Option[UserTimeline]]

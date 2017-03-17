@@ -16,5 +16,5 @@ object UserTimelineCommands {
 
   case class DeleteRetweetCommand(tweetId: String) extends UserTimelineCommand
 
-  case object DeleteUserTimeLineCommand extends UserTimelineCommand
+  case object DeleteUserTimelineCommand extends UserTimelineCommand
 }

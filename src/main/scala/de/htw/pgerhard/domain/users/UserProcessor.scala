@@ -37,37 +37,43 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
         reportState()
       }
     case cmd: FollowUserCommand ⇒
-      state.filter(!_.following.contains(cmd.userId)) foreach { _ ⇒
-        persist(UserFollowedEvent(persistenceId, cmd.userId)) { event ⇒
-          handleUpdate(event)
-          reportState()
-        }
-      }
+      persistUpdateIf(isNotFollowing(cmd.userId))(
+        UserFollowedEvent(persistenceId, cmd.userId))(
+        UserAlreadyFollows(persistenceId, cmd.userId))
+
     case cmd: UnfollowUserCommand ⇒
-      state.filter(_.following.contains(cmd.userId)) foreach { _ ⇒
-        persist(UserUnfollowedEvent(persistenceId, cmd.userId)) { event ⇒
-          handleUpdate(event)
-          reportState()
-        }
-      }
+      persistUpdateIf(isFollowing(cmd.userId))(
+        UserUnfollowedEvent(persistenceId, cmd.userId))(
+        FollowingNotFound(persistenceId, cmd.userId))
+
     case cmd: AddFollowerCommand ⇒
-      state.filter(!_.followers.contains(cmd.userId)) foreach { _ ⇒
-        persist(FollowerAddedEvent(persistenceId, cmd.userId)) { event ⇒
-          handleUpdate(event)
-        }
-      }
+      persistUpdateIf(isNotFollower(cmd.userId))(
+        FollowerAddedEvent(persistenceId, cmd.userId))(
+        UserAlreadyFollows(cmd.userId, persistenceId))
+
     case cmd: RemoveFollowerCommand ⇒
-      state.filter(_.followers.contains(cmd.userId)) foreach { _ ⇒
-        persist(FollowerRemovedEvent(persistenceId, cmd.userId)) { event ⇒
-          handleUpdate(event)
-        }
-      }
+      persistUpdateIf(isFollower(cmd.userId))(
+        FollowerRemovedEvent(persistenceId, cmd.userId))(
+        FollowerNotFound(persistenceId, cmd.userId))
+
     case DeleteUserCommand ⇒
       persist(UserDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()
         reportState()
       }
   }
+
+  private def isFollowing(userId: String)(thisUser: User) =
+    thisUser.following.contains(userId)
+
+  private def isNotFollowing(userId: String)(thisUser: User) =
+    !isFollowing(userId)(thisUser)
+
+  private def isFollower(userId: String)(thisUser: User) =
+    thisUser.followers.contains(userId)
+
+  private def isNotFollower(userId: String)(thisUser: User) =
+    !isFollower(userId)(thisUser)
 }
 
 object UserProcessor {

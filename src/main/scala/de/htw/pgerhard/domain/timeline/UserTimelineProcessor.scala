@@ -25,7 +25,7 @@ class UserTimelineProcessor(val persistenceId: String)
     case cmd: CreateUserTimelineCommand ⇒
       persist(UserTimelineCreatedEvent(persistenceId, cmd.userId)) { event ⇒
         handleCreation(event)
-        reportState()
+        reportResult(())
       }
     case _: UserTimelineCommand ⇒
       reportState()
@@ -33,37 +33,43 @@ class UserTimelineProcessor(val persistenceId: String)
 
   override def receiveWhenInitialized: Receive = {
     case cmd: PostTweetCommand ⇒
-      persist(UserTweetedEvent(persistenceId, cmd.tweetId)) { event ⇒
-        handleUpdate(event)
-      }
-      reportState()
-    case cmd: DeleteTweetCommand ⇒
-      state.filter(_.tweets.contains(cmd.tweetId)) foreach { _ ⇒
-        persist(UserDeletedTweetEvent(persistenceId, cmd.tweetId)) { event ⇒
-          handleUpdate(event)
-        }
-      }
-      reportState()
-    case cmd: PostRetweetCommand ⇒
-      state.filter(!_.retweets.contains(cmd.tweetId)) foreach { _ ⇒
-        persist(UserRetweetedEvent(persistenceId, cmd.tweetId, cmd.authorId)) { event ⇒
-          handleUpdate(event)
-        }
-      }
-    case cmd: DeleteRetweetCommand ⇒
-      state.filter(_.retweets.contains(cmd.tweetId)) foreach { _ ⇒
-        persist(UserDeletedRetweetEvent(persistenceId, cmd.tweetId)) { event ⇒
-          handleUpdate(event)
-        }
-      }
-      reportState()
+      persistUpdateIf(tweetNotFound(cmd.tweetId))(
+        UserTweetedEvent(persistenceId, cmd.tweetId))(
+        AlreadyTweeted(persistenceId, cmd.tweetId))
 
-    case DeleteUserTimeLineCommand  ⇒
+    case cmd: DeleteTweetCommand ⇒
+      persistUpdateIf(tweetFound(cmd.tweetId))(
+        UserDeletedTweetEvent(persistenceId, cmd.tweetId))(
+        TweetNotFound(persistenceId, cmd.tweetId))
+
+    case cmd: PostRetweetCommand ⇒
+      persistUpdateIf(retweetNotFound(cmd.tweetId))(
+        UserRetweetedEvent(persistenceId, cmd.tweetId, cmd.authorId))(
+        AlreadyRetweeted(persistenceId, cmd.tweetId))
+
+    case cmd: DeleteRetweetCommand ⇒
+      persistUpdateIf(retweetFound(cmd.tweetId))(
+        UserDeletedRetweetEvent(persistenceId, cmd.tweetId))(
+        RetweetNotFound(persistenceId, cmd.tweetId))
+
+    case DeleteUserTimelineCommand  ⇒
       persist(UserTimelineDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()
         reportState()
       }
   }
+
+  private def tweetFound(tweetId: String)(timeline: UserTimeline) =
+    timeline.tweets.contains(tweetId)
+
+  private def tweetNotFound(tweetId: String)(timeline: UserTimeline) =
+    !tweetFound(tweetId)(timeline)
+
+  private def retweetFound(tweetId: String)(timeline: UserTimeline) =
+    timeline.retweets.contains(tweetId)
+
+  private def retweetNotFound(tweetId: String)(timeline: UserTimeline) =
+    !timeline.retweets.contains(tweetId)
 }
 
 object UserTimelineProcessor {

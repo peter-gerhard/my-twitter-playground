@@ -53,6 +53,21 @@ trait AggregateRootProcessor[A <: AggregateRoot[A], Error] extends PersistentAct
     super.preRestart(reason, message)
   }
 
+  def persistUpdate(event: Event[A]): Unit =
+    persist(event) { event ⇒
+      handleUpdate(event)
+      reportResult(())
+    }
+
+  def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A])(error: ⇒ Error): Unit =
+    state.filter(condition)
+      .fold(reportError(error)) { _ ⇒
+        persist(event) { event ⇒
+          handleUpdate(event)
+          reportResult(())
+        }
+      }
+
   def reportResult(res: Any): Unit =
     sender ! Right(res)
 
