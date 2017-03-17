@@ -6,6 +6,7 @@ version := "0.1.0-SNAPSHOT"
 scalaVersion := "2.11.8"
 
 scalacOptions := Seq(
+  "-target:jvm-1.8",
   "-unchecked",
   "-deprecation",
   "-Ywarn-dead-code",

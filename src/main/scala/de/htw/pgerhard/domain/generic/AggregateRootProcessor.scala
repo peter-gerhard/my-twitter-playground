@@ -1,10 +1,11 @@
 package de.htw.pgerhard.domain.generic
 
 import akka.actor.ActorLogging
+import akka.actor.Status.Failure
 import akka.persistence.{PersistenceFailure, PersistentActor}
 import de.htw.pgerhard.domain.Get
 
-trait AggregateRootProcessor[A <: AggregateRoot[A], Error] extends PersistentActor with ActorLogging {
+trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with ActorLogging {
 
   type CreatedEvent <: Event[A]
 
@@ -39,9 +40,6 @@ trait AggregateRootProcessor[A <: AggregateRoot[A], Error] extends PersistentAct
     becomeUninitialized()
   }
 
-  protected def reportState(): Unit =
-    sender() ! state
-
   private def becomeInitialized(): Unit =
     context.become(receiveWhenInitialized orElse default)
 
@@ -56,21 +54,24 @@ trait AggregateRootProcessor[A <: AggregateRoot[A], Error] extends PersistentAct
   def persistUpdate(event: Event[A]): Unit =
     persist(event) { event ⇒
       handleUpdate(event)
-      reportResult(())
+      reportSuccess(())
     }
 
-  def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A])(error: ⇒ Error): Unit =
+  def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A])(error: ⇒ Exception): Unit =
     state.filter(condition)
-      .fold(reportError(error)) { _ ⇒
+      .fold(reportFailure(error)) { _ ⇒
         persist(event) { event ⇒
           handleUpdate(event)
-          reportResult(())
+          reportSuccess(())
         }
       }
 
-  def reportResult(res: Any): Unit =
-    sender ! Right(res)
+  protected def reportState(): Unit =
+    sender() ! state
 
-  def reportError(e: Error): Unit =
-    sender ! Left(e)
+  def reportSuccess(result: Any): Unit =
+    sender ! result
+
+  def reportFailure(e: Exception): Unit =
+    sender ! Failure(e)
 }

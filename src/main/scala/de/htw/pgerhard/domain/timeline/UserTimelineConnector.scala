@@ -26,17 +26,17 @@ class UserTimelineConnector(
   def createForUser(userId: String): Future[Option[UserTimeline]] =
     sendMessage(CreateUserTimelineCommand(timelineId(userId)))
 
-  def postTweet(userId: String, body: String): Future[Option[Tweet]] =
+  def postTweet(userId: String, body: String): Future[Option[Boolean]] =
     for {
       tweet ← FutureOption(tweets.create(userId, body))
       _     ← FutureOption(sendMessage(Envelope(timelineId(userId), PostTweetCommand(tweet.id))))
-    } yield tweet
+    } yield true
 
-  def deleteTweet(userId: String, tweetId: String): Future[Option[Tweet]] =
+  def deleteTweet(userId: String, tweetId: String): Future[Option[Boolean]] =
     for {
       _     ← FutureOption(sendMessage(Envelope(timelineId(userId), DeleteTweetCommand(tweetId))))
       tweet ← FutureOption(tweets.delete(tweetId))
-    } yield tweet
+    } yield true
 
   // Todo return retweet? this does not report if an update happened
   def postRetweet(userId: String, tweetId: String): Future[Option[Boolean]] =

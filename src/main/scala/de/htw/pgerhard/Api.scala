@@ -29,7 +29,7 @@ object Api extends App {
 
   val executor = Executor(GraphQlSchema.schema, deferredResolver = DeferredResolver.fetchers(GraphQlSchema.tweets, GraphQlSchema.users))
 
-  private def executeQuery(query: String, operation: Option[String], variables: JsObject = JsObject.empty) = {
+  private def executeQuery(query: String, operation: Option[String], variables: JsObject) = {
     QueryParser.parse(query) match {
       case Success(queryAst) ⇒
         queryAst.operationType(operation) match {
@@ -55,12 +55,12 @@ object Api extends App {
           case _ ⇒
             complete(
               Executor.execute(
-                GraphQlSchema.schema,
-                queryAst,
-                environment,
-                variables = variables,
-                operationName = operation,
-                deferredResolver = DeferredResolver.fetchers(GraphQlSchema.tweets, GraphQlSchema.users))
+                  GraphQlSchema.schema,
+                  queryAst,
+                  environment,
+                  variables = variables,
+                  operationName = operation,
+                  deferredResolver = DeferredResolver.fetchers(GraphQlSchema.tweets, GraphQlSchema.users))
                 .map(OK → _)
                 .recover {
                   case error: QueryAnalysisError ⇒ BadRequest → error.resolveError

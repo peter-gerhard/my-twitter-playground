@@ -6,7 +6,7 @@ import de.htw.pgerhard.domain.users.UserCommands._
 import de.htw.pgerhard.domain.users.UserErrors._
 import de.htw.pgerhard.domain.users.UserEvents._
 
-class UserProcessor(override val persistenceId: String) extends AggregateRootProcessor[User, UserError] {
+class UserProcessor(override val persistenceId: String) extends AggregateRootProcessor[User] {
 
   override type CreatedEvent = UserRegisteredEvent
 

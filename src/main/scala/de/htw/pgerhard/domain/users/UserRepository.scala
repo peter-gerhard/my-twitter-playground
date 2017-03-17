@@ -7,7 +7,7 @@ import de.htw.pgerhard.domain.users.UserErrors.UserError
 
 class UserRepository extends Repository[User, UserError] {
 
-  override def processor: (String) ⇒ AggregateRootProcessor[User, UserError] =
+  override def processor: (String) ⇒ AggregateRootProcessor[User] =
     UserProcessor.apply
 
   override def receive: Receive = {

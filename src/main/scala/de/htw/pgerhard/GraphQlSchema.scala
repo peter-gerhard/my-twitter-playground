@@ -1,13 +1,10 @@
 package de.htw.pgerhard
 
-import de.htw.pgerhard.domain.timeline.UserTimeline
-import de.htw.pgerhard.domain.tweets.Tweet
+import de.htw.pgerhard.domain.timeline.{Retweet, TweetRef, UserTimelineProjection, WithTweet}
+import de.htw.pgerhard.domain.tweets.TweetProjection
 import de.htw.pgerhard.domain.users.User
-import de.htw.pgerhard.util.FutureOption
 import sangria.execution.deferred.{Fetcher, HasId}
-import sangria.schema.{Field, _}
-
-import scala.concurrent.Future
+import sangria.schema._
 
 object GraphQlSchema {
 
@@ -15,23 +12,67 @@ object GraphQlSchema {
     * Resolves the lists of tweets. These resolutions are batched and
     * cached for the duration of a query.
     */
-  val tweets: Fetcher[Environment, Tweet, String] =
+  val tweets: Fetcher[Environment, TweetProjection, String] =
     Fetcher.caching((ctx: Environment, ids: Seq[String]) ⇒ ctx.tweets.getMultipleByIds(ids))(HasId(_.id))
 
   val users: Fetcher[Environment, User, String] =
     Fetcher.caching((ctx: Environment, ids: Seq[String]) ⇒ ctx.users.getMultipleByIds(ids))(HasId(_.id))
 
-  lazy val TweetType: ObjectType[Environment, Tweet] =
+  lazy val UserTimelineType: ObjectType[Environment, UserTimelineProjection] =
+    ObjectType(
+      "UserTimeline",
+      "A history of tweets and retweets of a user",
+      () ⇒ fields[Environment, UserTimelineProjection](
+        Field("id", StringType,
+          Some(""),
+          resolve = _.value.id),
+        Field("userId", StringType,
+          Some(""),
+          resolve = _.value.userId),
+        Field("tweets", ListType(WithTweetType),
+          Some(""),
+          resolve = _.value.tweets)))
+
+  lazy val WithTweetType: InterfaceType[Environment, WithTweet] =
+    InterfaceType(
+      "WithTweet",
+      "A retweet or a reference to a tweet",
+      () ⇒ fields[Environment, WithTweet](
+        Field("tweet", TweetType,
+          Some(""),
+          resolve = ctx ⇒ tweets.defer(ctx.value.tweetId))))
+
+  lazy val RetweetType: ObjectType[Environment, Retweet] =
+    ObjectType(
+      "Retweet",
+      "A retweet",
+      interfaces[Environment, Retweet](WithTweetType),
+      fields[Environment, Retweet](
+        Field("tweet", TweetType,
+          Some(""),
+          resolve = ctx ⇒ tweets.defer(ctx.value.tweetId))))
+
+  lazy val TweetRefType: ObjectType[Environment, TweetRef] =
+    ObjectType(
+      "TweetRef",
+      "A Reference to a tweet",
+      interfaces[Environment, TweetRef](WithTweetType),
+      fields[Environment, TweetRef](
+        Field("tweet", TweetType,
+          Some(""),
+          resolve = ctx ⇒ tweets.defer(ctx.value.tweetId))))
+
+  lazy val TweetType: ObjectType[Environment, TweetProjection] =
     ObjectType(
       "Tweet",
       "A post on Twitter",
-      () ⇒ fields[Environment, Tweet](
+      () ⇒ fields[Environment, TweetProjection](
         Field("id", StringType,
           Some("The id of the tweet."),
           resolve = _.value.id),
         Field("author", OptionType(UserType),
           Some("The id of the author."),
-          resolve = ctx ⇒ ctx.ctx.users.getById(ctx.value.authorId)),
+          resolve = ctx ⇒ users.defer(ctx.value.authorId)),
         Field("body", StringType,
           Some("The body of the tweet."),
           resolve = _.value.body),
@@ -40,10 +81,10 @@ object GraphQlSchema {
           resolve = _.value.timestamp),
         Field("likeCount", IntType,
           Some("The number of people who liked this tweet."),
-          resolve = _.value.likers.size),
+          resolve = _.value.likeCount),
         Field("retweetCount", IntType,
           Some("The number of people who retweeted this tweet."),
-          resolve = _.value.retweeters.size)))
+          resolve = _.value.retweetCount)))
 
   lazy val UserType: ObjectType[Environment, User] =
     ObjectType(
@@ -88,10 +129,10 @@ object GraphQlSchema {
   val MutationType = ObjectType(
     "Mutation", fields[Environment, Unit](
       // UserTimeline Mutations
-      Field("postTweet", OptionType(TweetType),
+      Field("postTweet", OptionType(BooleanType),
         arguments = UserIdArg :: AuthorArg :: BodyArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.postTweet(ctx.arg(UserIdArg), ctx.arg(BodyArg))),
-      Field("deleteTweet", OptionType(TweetType),
+      Field("deleteTweet", OptionType(BooleanType),
         arguments = UserIdArg :: TweetIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.deleteTweet(ctx.arg(UserIdArg), ctx.arg(TweetIdArg))),
       Field("postRetweet", OptionType(BooleanType),

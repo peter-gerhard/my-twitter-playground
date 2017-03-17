@@ -7,7 +7,7 @@ import de.htw.pgerhard.domain.timeline.UserTimelineErrors._
 import de.htw.pgerhard.domain.timeline.UserTimelineEvents._
 
 class UserTimelineProcessor(val persistenceId: String)
-  extends AggregateRootProcessor[UserTimeline, UserTimelineError] {
+  extends AggregateRootProcessor[UserTimeline] {
 
   override type CreatedEvent = UserTimelineCreatedEvent
 
@@ -25,7 +25,7 @@ class UserTimelineProcessor(val persistenceId: String)
     case cmd: CreateUserTimelineCommand ⇒
       persist(UserTimelineCreatedEvent(persistenceId, cmd.userId)) { event ⇒
         handleCreation(event)
-        reportResult(())
+        reportSuccess(())
       }
     case _: UserTimelineCommand ⇒
       reportState()

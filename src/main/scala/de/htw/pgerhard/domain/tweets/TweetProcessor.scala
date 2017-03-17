@@ -6,7 +6,7 @@ import de.htw.pgerhard.domain.tweets.TweetCommands._
 import de.htw.pgerhard.domain.tweets.TweetErrors._
 import de.htw.pgerhard.domain.tweets.TweetEvents._
 
-class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[Tweet, TweetError] {
+class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[Tweet] {
 
   override type CreatedEvent = TweetCreatedEvent
 
