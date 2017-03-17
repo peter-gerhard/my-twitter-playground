@@ -32,9 +32,9 @@ class DefaultEnvironment extends Environment {
 
   implicit val timeout = Timeout(5 seconds)
 
-  override def users: UserConnector = new UserConnector(actorSystem.actorOf(Props[UserRepository]))
+  override lazy val users: UserConnector = new UserConnector(actorSystem.actorOf(Props[UserRepository]), userTimelines)
 
-  override def tweets: TweetConnector = new TweetConnector(actorSystem.actorOf(Props[TweetRepository]))
+  override lazy val tweets: TweetConnector = new TweetConnector(actorSystem.actorOf(Props[TweetRepository]))
 
-  override def userTimelines = new UserTimelineConnector(actorSystem.actorOf(Props[UserTimelineRepository]))
+  override lazy val userTimelines = new UserTimelineConnector(actorSystem.actorOf(Props[UserTimelineRepository]), tweets)
 }

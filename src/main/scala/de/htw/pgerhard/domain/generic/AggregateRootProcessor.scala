@@ -4,7 +4,7 @@ import akka.actor.ActorLogging
 import akka.persistence.{PersistenceFailure, PersistentActor}
 import de.htw.pgerhard.domain.Get
 
-trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with ActorLogging {
+trait AggregateRootProcessor[A <: AggregateRoot[A], Error] extends PersistentActor with ActorLogging {
 
   type CreatedEvent <: Event[A]
 
@@ -52,4 +52,10 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
     log.debug(reason.getMessage)
     super.preRestart(reason, message)
   }
+
+  def reportResult(res: Any): Unit =
+    sender ! Right(res)
+
+  def reportError(e: Error): Unit =
+    sender ! Left(e)
 }

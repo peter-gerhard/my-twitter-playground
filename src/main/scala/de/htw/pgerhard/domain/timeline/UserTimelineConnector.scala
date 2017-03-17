@@ -4,36 +4,59 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import de.htw.pgerhard.domain.timeline.UserTimelineCommands._
+import de.htw.pgerhard.domain.tweets.{Tweet, TweetConnector}
 import de.htw.pgerhard.domain.{Envelope, Get}
+import de.htw.pgerhard.util.FutureOption
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class UserTimelineConnector(repo: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
+class UserTimelineConnector(
+    userTimelineRepo: ActorRef,
+    tweets: TweetConnector)(
+  implicit
+    ec: ExecutionContext,
+    timeout: Timeout) {
 
-  def getById(id: String): Future[Option[UserTimeline]] =
-    sendMessage(Envelope(id, Get))
+  def getByUserId(userId: String): Future[Option[UserTimeline]] =
+    sendMessage(Envelope(timelineId(userId), Get))
 
-  def getMultipleByIds(ids: Seq[String]): Future[Seq[UserTimeline]] =
-    Future.sequence(ids.map(getById)).map(_.flatten)
+  def getMultipleByUserIds(ids: Seq[String]): Future[Seq[UserTimeline]] =
+    Future.sequence(ids.map(getByUserId)).map(_.flatten)
 
-  def create(userId: String): Future[Option[UserTimeline]] =
-    sendMessage(CreateUserTimelineCommand(userId))
+  def createForUser(userId: String): Future[Option[UserTimeline]] =
+    sendMessage(CreateUserTimelineCommand(timelineId(userId)))
 
-  def postTweet(id: String, tweetId: String): Future[Option[UserTimeline]] =
-    sendMessage(Envelope(id, PostTweetCommand(tweetId)))
+  def postTweet(userId: String, body: String): Future[Option[Tweet]] =
+    for {
+      tweet ← FutureOption(tweets.create(userId, body))
+      _     ← FutureOption(sendMessage(Envelope(timelineId(userId), PostTweetCommand(tweet.id))))
+    } yield tweet
 
-  def deleteTweet(id: String, tweetId: String): Future[Option[UserTimeline]] =
-    sendMessage(Envelope(id, DeleteTweetCommand(tweetId)))
+  def deleteTweet(userId: String, tweetId: String): Future[Option[Tweet]] =
+    for {
+      _     ← FutureOption(sendMessage(Envelope(timelineId(userId), DeleteTweetCommand(tweetId))))
+      tweet ← FutureOption(tweets.delete(tweetId))
+    } yield tweet
 
-  def postRetweet(id: String, tweetId: String, authorId: String): Future[Option[UserTimeline]] =
-    sendMessage(Envelope(id, PostRetweetCommand(tweetId, authorId)))
+  // Todo return retweet? this does not report if an update happened
+  def postRetweet(userId: String, tweetId: String): Future[Option[Boolean]] =
+    for {
+      tweet ← FutureOption(tweets.getById(tweetId))
+      _     ← FutureOption(sendMessage(Envelope(timelineId(userId), PostRetweetCommand(tweetId, tweet.authorId))))
+    } yield true
 
-  def deleteRetweet(id: String, tweetId: String): Future[Option[UserTimeline]] =
-    sendMessage(Envelope(id, DeleteRetweetCommand(tweetId)))
+  def deleteRetweet(userId: String, tweetId: String): Future[Option[Boolean]] =
+    for {
+      _     ← FutureOption(sendMessage(Envelope(timelineId(userId), DeleteRetweetCommand(tweetId))))
+      _     ← FutureOption(tweets.delete(tweetId))
+    } yield true
 
-  def delete(id: String, tweetId: String): Future[Option[UserTimeline]] =
-    sendMessage(Envelope(id, DeleteUserTimeLineCommand))
+  def deleteForUser(userId: String): Future[Option[UserTimeline]] =
+    sendMessage(Envelope(timelineId(userId), DeleteUserTimeLineCommand))
 
   private def sendMessage(message: Any) =
-    (repo ? message).mapTo[Option[UserTimeline]]
+    (userTimelineRepo ? message).mapTo[Option[UserTimeline]]
+
+  private def timelineId(userId: String) = s"timeline_$userId"
+
 }

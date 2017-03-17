@@ -3,9 +3,10 @@ package de.htw.pgerhard.domain.tweets
 import akka.persistence.RecoveryFailure
 import de.htw.pgerhard.domain.generic.AggregateRootProcessor
 import de.htw.pgerhard.domain.tweets.TweetCommands._
+import de.htw.pgerhard.domain.tweets.TweetErrors._
 import de.htw.pgerhard.domain.tweets.TweetEvents._
 
-class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[Tweet] {
+class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[Tweet, TweetError] {
 
   override type CreatedEvent = TweetCreatedEvent
 

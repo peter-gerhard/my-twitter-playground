@@ -76,8 +76,6 @@ object GraphQlSchema {
   val HandleArg = Argument("handle", StringType, description = "handle of the user")
   val NameArg = Argument("name", StringType, description = "name of the user")
 
-  val UserTimelineIdArg = Argument("timelineId", StringType, description = "Id of the user timeline")
-
   val QueryType = ObjectType(
     "Query", fields[Environment, Unit](
       Field("tweet", OptionType(TweetType),
@@ -91,38 +89,22 @@ object GraphQlSchema {
     "Mutation", fields[Environment, Unit](
       // UserTimeline Mutations
       Field("postTweet", OptionType(TweetType),
-        arguments = UserTimelineIdArg :: AuthorArg :: BodyArg :: Nil,
-        resolve = (ctx) ⇒ {
-          import ctx.ctx.executionContext
-          (for {
-            tweet ← FutureOption(ctx.ctx.tweets.create(ctx.arg(AuthorArg), ctx.arg(BodyArg)))
-            _     ← FutureOption(ctx.ctx.userTimelines.postTweet(ctx.arg(UserTimelineIdArg), tweet.id))
-          } yield tweet).get
-        }
-      ),
+        arguments = UserIdArg :: AuthorArg :: BodyArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.userTimelines.postTweet(ctx.arg(UserIdArg), ctx.arg(BodyArg))),
       Field("deleteTweet", OptionType(TweetType),
-        arguments = UserTimelineIdArg :: TweetIdArg :: Nil,
-        resolve = (ctx) ⇒ {
-          import ctx.ctx.executionContext
-          (for {
-            _     ← FutureOption(ctx.ctx.userTimelines.deleteTweet(ctx.arg(UserTimelineIdArg), ctx.arg(TweetIdArg)))
-            tweet ← FutureOption(ctx.ctx.tweets.delete(ctx.arg(TweetIdArg)))
-          } yield tweet).get
-        }
-      ),
+        arguments = UserIdArg :: TweetIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.userTimelines.deleteTweet(ctx.arg(UserIdArg), ctx.arg(TweetIdArg))),
+      Field("postRetweet", OptionType(BooleanType),
+        arguments = UserIdArg :: TweetIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.userTimelines.postRetweet(ctx.arg(UserIdArg), ctx.arg(TweetIdArg))),
+      Field("deleteRetweet", OptionType(BooleanType),
+        arguments = UserIdArg :: TweetIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.userTimelines.deleteRetweet(ctx.arg(UserIdArg), ctx.arg(TweetIdArg))),
 
       // User Mutations
       Field("registerUser", OptionType(UserType),
         arguments = HandleArg :: NameArg :: Nil,
-        resolve = (ctx) ⇒ {
-          import ctx.ctx.executionContext
-          // move orchestration in connector!
-          (for {
-            user ← FutureOption(ctx.ctx.users.register(ctx.arg(HandleArg), ctx.arg(NameArg)))
-            _    ← FutureOption(ctx.ctx.userTimelines.create(user.id))
-          } yield user).get
-        }
-      ),
+        resolve = (ctx) ⇒ ctx.ctx.users.register(ctx.arg(HandleArg), ctx.arg(NameArg))),
       Field("setUserName", OptionType(UserType),
         arguments = UserIdArg :: NameArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.setName(ctx.arg(UserIdArg), ctx.arg(NameArg))),

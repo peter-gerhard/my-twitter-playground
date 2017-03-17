@@ -5,6 +5,13 @@ version := "0.1.0-SNAPSHOT"
 
 scalaVersion := "2.11.8"
 
+scalacOptions := Seq(
+  "-unchecked",
+  "-deprecation",
+  "-Ywarn-dead-code",
+  "-Ywarn-value-discard",
+  "-Ywarn-unused")
+
 resolvers ++= Seq(
   Resolver.bintrayRepo("krasserm", "maven"))
 

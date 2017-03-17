@@ -4,9 +4,9 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
-trait Repository[A <: AggregateRoot[A]] extends Actor with ActorLogging {
+trait Repository[A <: AggregateRoot[A], Error] extends Actor with ActorLogging {
 
-  def processor(id: String): AggregateRootProcessor[A]
+  def processor: (String) ⇒ AggregateRootProcessor[A, Error]
 
   protected def getProcessor(id: String): ActorRef =
     (context child id).getOrElse(createProcessor(id))

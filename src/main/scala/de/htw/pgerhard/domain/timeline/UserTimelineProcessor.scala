@@ -3,10 +3,11 @@ package de.htw.pgerhard.domain.timeline
 import akka.persistence.RecoveryFailure
 import de.htw.pgerhard.domain.generic.AggregateRootProcessor
 import de.htw.pgerhard.domain.timeline.UserTimelineCommands._
+import de.htw.pgerhard.domain.timeline.UserTimelineErrors._
 import de.htw.pgerhard.domain.timeline.UserTimelineEvents._
-import de.htw.pgerhard.domain.tweets.TweetCommands.TweetCommand
 
-class UserTimelineProcessor(val persistenceId: String) extends AggregateRootProcessor[UserTimeline] {
+class UserTimelineProcessor(val persistenceId: String)
+  extends AggregateRootProcessor[UserTimeline, UserTimelineError] {
 
   override type CreatedEvent = UserTimelineCreatedEvent
 
@@ -26,7 +27,7 @@ class UserTimelineProcessor(val persistenceId: String) extends AggregateRootProc
         handleCreation(event)
         reportState()
       }
-    case _: TweetCommand ⇒
+    case _: UserTimelineCommand ⇒
       reportState()
   }
 
@@ -34,23 +35,29 @@ class UserTimelineProcessor(val persistenceId: String) extends AggregateRootProc
     case cmd: PostTweetCommand ⇒
       persist(UserTweetedEvent(persistenceId, cmd.tweetId)) { event ⇒
         handleUpdate(event)
-        reportState()
       }
+      reportState()
     case cmd: DeleteTweetCommand ⇒
-      persist(UserDeletedTweetEvent(persistenceId, cmd.tweetId)) { event ⇒
-        handleUpdate(event)
-        reportState()
+      state.filter(_.tweets.contains(cmd.tweetId)) foreach { _ ⇒
+        persist(UserDeletedTweetEvent(persistenceId, cmd.tweetId)) { event ⇒
+          handleUpdate(event)
+        }
       }
+      reportState()
     case cmd: PostRetweetCommand ⇒
-      persist(UserRetweetedEvent(persistenceId, cmd.tweetId, cmd.authorId)) { event ⇒
-        handleUpdate(event)
-        reportState()
+      state.filter(!_.retweets.contains(cmd.tweetId)) foreach { _ ⇒
+        persist(UserRetweetedEvent(persistenceId, cmd.tweetId, cmd.authorId)) { event ⇒
+          handleUpdate(event)
+        }
       }
     case cmd: DeleteRetweetCommand ⇒
-      persist(UserDeletedRetweetEvent(persistenceId, cmd.tweetId)) { event ⇒
-        handleUpdate(event)
-        reportState()
+      state.filter(_.retweets.contains(cmd.tweetId)) foreach { _ ⇒
+        persist(UserDeletedRetweetEvent(persistenceId, cmd.tweetId)) { event ⇒
+          handleUpdate(event)
+        }
       }
+      reportState()
+
     case DeleteUserTimeLineCommand  ⇒
       persist(UserTimelineDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()

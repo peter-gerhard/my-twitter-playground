@@ -3,13 +3,15 @@ package de.htw.pgerhard.domain.users
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
+import de.htw.pgerhard.domain.timeline.UserTimelineConnector
 import de.htw.pgerhard.domain.{Envelope, Get}
 import de.htw.pgerhard.domain.users.UserCommands._
+import de.htw.pgerhard.util.FutureOption
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
-class UserConnector(repo: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
+class UserConnector(userRepo: ActorRef, userTimelines: UserTimelineConnector)(implicit ec: ExecutionContext, timeout: Timeout) {
 
   def getById(id: String): Future[Option[User]] =
     sendMessage(Envelope(id, Get))
@@ -18,7 +20,10 @@ class UserConnector(repo: ActorRef)(implicit ec: ExecutionContext, timeout: Time
     Future.sequence(ids.map(getById)).map(_.flatten)
 
   def register(handle: String, name: String): Future[Option[User]] =
-    sendMessage(RegisterUserCommand(handle, name))
+    for {
+      user ← FutureOption(sendMessage(RegisterUserCommand(handle, name)))
+      _    ← FutureOption(userTimelines.createForUser(user.id))
+    } yield user
 
   def setName(id: String, name: String): Future[Option[User]] =
     sendMessage(Envelope(id, SetUserNameCommand(name)))
@@ -30,8 +35,11 @@ class UserConnector(repo: ActorRef)(implicit ec: ExecutionContext, timeout: Time
     sendMessage(Envelope(id, UnfollowUserCommand(followingId)))
 
   def delete(id: String): Future[Option[User]] =
-    sendMessage(Envelope(id, DeleteUserCommand))
+    for {
+      _    ← FutureOption(userTimelines.deleteForUser(id))
+      user ← FutureOption(sendMessage(Envelope(id, DeleteUserCommand)))
+    } yield user
 
   private def sendMessage(message: Any) =
-    (repo ? message).mapTo[Option[User]]
+    (userRepo ? message).mapTo[Option[User]]
 }

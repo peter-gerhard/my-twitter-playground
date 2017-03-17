@@ -2,10 +2,11 @@ package de.htw.pgerhard.domain.users
 
 import akka.persistence.RecoveryFailure
 import de.htw.pgerhard.domain.generic.AggregateRootProcessor
-import de.htw.pgerhard.domain.users.UserEvents._
 import de.htw.pgerhard.domain.users.UserCommands._
+import de.htw.pgerhard.domain.users.UserErrors._
+import de.htw.pgerhard.domain.users.UserEvents._
 
-class UserProcessor(override val persistenceId: String) extends AggregateRootProcessor[User] {
+class UserProcessor(override val persistenceId: String) extends AggregateRootProcessor[User, UserError] {
 
   override type CreatedEvent = UserRegisteredEvent
 
