@@ -8,13 +8,13 @@ object TweetCommands {
 
   case class CreateTweetCommand(authorId: String, body: String) extends TweetCommand
 
-//  case class AddRetweeterCommand(userId: String) extends TweetCommand
-//
-//  case class RemoveRetweeterCommand(userId: String) extends TweetCommand
-//
-//  case class AddLikerCommand(userId: String) extends TweetCommand
-//
-//  case class RemoveLikerCommand(userId: String) extends TweetCommand
+  case class AddRetweeterCommand(userId: String) extends TweetCommand
+
+  case class RemoveRetweeterCommand(userId: String) extends TweetCommand
+
+  case class AddLikerCommand(userId: String) extends TweetCommand
+
+  case class RemoveLikerCommand(userId: String) extends TweetCommand
 
   case object DeleteTweetCommand extends TweetCommand
 }

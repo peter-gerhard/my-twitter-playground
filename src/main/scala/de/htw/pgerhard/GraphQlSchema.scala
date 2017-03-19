@@ -1,7 +1,7 @@
 package de.htw.pgerhard
 
 import de.htw.pgerhard.domain.timeline.{Retweet, TweetRef, UserTimelineProjection, WithTweet}
-import de.htw.pgerhard.domain.tweets.TweetProjection
+import de.htw.pgerhard.domain.tweets.Tweet
 import de.htw.pgerhard.domain.users.User
 import sangria.execution.deferred.{Fetcher, HasId}
 import sangria.schema._
@@ -12,7 +12,7 @@ object GraphQlSchema {
     * Resolves the lists of tweets. These resolutions are batched and
     * cached for the duration of a query.
     */
-  val tweets: Fetcher[Environment, TweetProjection, String] =
+  val tweets: Fetcher[Environment, Tweet, String] =
     Fetcher.caching((ctx: Environment, ids: Seq[String]) ⇒ ctx.tweets.getMultipleByIds(ids))(HasId(_.id))
 
   val users: Fetcher[Environment, User, String] =
@@ -62,11 +62,11 @@ object GraphQlSchema {
           Some(""),
           resolve = ctx ⇒ tweets.defer(ctx.value.tweetId))))
 
-  lazy val TweetType: ObjectType[Environment, TweetProjection] =
+  lazy val TweetType: ObjectType[Environment, Tweet] =
     ObjectType(
       "Tweet",
       "A post on Twitter",
-      () ⇒ fields[Environment, TweetProjection](
+      () ⇒ fields[Environment, Tweet](
         Field("id", StringType,
           Some("The id of the tweet."),
           resolve = _.value.id),
@@ -81,10 +81,10 @@ object GraphQlSchema {
           resolve = _.value.timestamp),
         Field("likeCount", IntType,
           Some("The number of people who liked this tweet."),
-          resolve = _.value.likeCount),
+          resolve = _.value.likers.size),
         Field("retweetCount", IntType,
           Some("The number of people who retweeted this tweet."),
-          resolve = _.value.retweetCount)))
+          resolve = _.value.retweeters.size)))
 
   lazy val UserType: ObjectType[Environment, User] =
     ObjectType(
@@ -119,31 +119,31 @@ object GraphQlSchema {
 
   val QueryType = ObjectType(
     "Query", fields[Environment, Unit](
-      Field("tweet", OptionType(TweetType),
+      Field("tweet", TweetType,
         arguments = TweetIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.tweets.getById(ctx.arg(TweetIdArg))),
-      Field("user", OptionType(UserType),
+      Field("user", UserType,
         arguments = UserIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.getById(ctx.arg(UserIdArg)))))
 
   val MutationType = ObjectType(
     "Mutation", fields[Environment, Unit](
       // UserTimeline Mutations
-      Field("postTweet", OptionType(BooleanType),
+      Field("postTweet", TweetType,
         arguments = UserIdArg :: AuthorArg :: BodyArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.postTweet(ctx.arg(UserIdArg), ctx.arg(BodyArg))),
-      Field("deleteTweet", OptionType(BooleanType),
+      Field("deleteTweet", BooleanType,
         arguments = UserIdArg :: TweetIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.deleteTweet(ctx.arg(UserIdArg), ctx.arg(TweetIdArg))),
-      Field("postRetweet", OptionType(BooleanType),
+      Field("postRetweet", RetweetType,
         arguments = UserIdArg :: TweetIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.postRetweet(ctx.arg(UserIdArg), ctx.arg(TweetIdArg))),
-      Field("deleteRetweet", OptionType(BooleanType),
+      Field("deleteRetweet", BooleanType,
         arguments = UserIdArg :: TweetIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.deleteRetweet(ctx.arg(UserIdArg), ctx.arg(TweetIdArg))),
 
       // User Mutations
-      Field("registerUser", OptionType(UserType),
+      Field("registerUser", UserType,
         arguments = HandleArg :: NameArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.register(ctx.arg(HandleArg), ctx.arg(NameArg))),
       Field("setUserName", OptionType(UserType),
@@ -155,7 +155,7 @@ object GraphQlSchema {
       Field("unfollowUser", OptionType(UserType),
         arguments = UserIdArg :: followingIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.removeFromFollowing(ctx.arg(UserIdArg), ctx.arg(followingIdArg))),
-      Field("deleteUser", OptionType(UserType),
+      Field("deleteUser", BooleanType,
         arguments = UserIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.delete(ctx.arg(UserIdArg)))))
 

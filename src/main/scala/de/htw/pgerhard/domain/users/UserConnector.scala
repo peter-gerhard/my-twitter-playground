@@ -1,45 +1,45 @@
 package de.htw.pgerhard.domain.users
 
 import akka.actor.ActorRef
-import akka.pattern.ask
 import akka.util.Timeout
+import de.htw.pgerhard.domain.generic.Connector
 import de.htw.pgerhard.domain.timeline.UserTimelineConnector
-import de.htw.pgerhard.domain.{Envelope, Get}
 import de.htw.pgerhard.domain.users.UserCommands._
-import de.htw.pgerhard.util.FutureOption
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
 
-class UserConnector(userRepo: ActorRef, userTimelines: UserTimelineConnector)(implicit ec: ExecutionContext, timeout: Timeout) {
+class UserConnector(
+    val repo: ActorRef,
+    val timelines: UserTimelineConnector)(
+  override implicit
+    val ec: ExecutionContext,
+    val timeout: Timeout)
+  extends Connector[User] {
 
-  def getById(id: String): Future[Option[User]] =
-    sendMessage(Envelope(id, Get))
-
-  def getMultipleByIds(ids: Seq[String]): Future[Seq[User]] =
-    Future.sequence(ids.map(getById)).map(_.flatten)
-
-  def register(handle: String, name: String): Future[Option[User]] =
+  def register(handle: String, name: String): Future[User] =
     for {
-      user ← FutureOption(sendMessage(RegisterUserCommand(handle, name)))
-      _    ← FutureOption(userTimelines.createForUser(user.id))
+      user ← sendMessage[User](RegisterUserCommand(handle, name))
+      _    ← timelines.createForUser(user.id)
     } yield user
 
-  def setName(id: String, name: String): Future[Option[User]] =
-    sendMessage(Envelope(id, SetUserNameCommand(name)))
+  def setName(id: String, name: String): Future[User] =
+    sendMessageTo(id, SetUserNameCommand(name))
 
-  def addToFollowing(id: String, followingId: String): Future[Option[User]] =
-    sendMessage(Envelope(id, FollowUserCommand(followingId)))
-
-  def removeFromFollowing(id: String, followingId: String): Future[Option[User]] =
-    sendMessage(Envelope(id, UnfollowUserCommand(followingId)))
-
-  def delete(id: String): Future[Option[User]] =
+  def addToFollowing(id: String, followingId: String): Future[User] =
     for {
-      _    ← FutureOption(userTimelines.deleteForUser(id))
-      user ← FutureOption(sendMessage(Envelope(id, DeleteUserCommand)))
+      user ← sendMessageTo[User](id, FollowUserCommand(followingId))
+      _    = sendMessageTo[User](followingId, AddFollowerCommand(id))
     } yield user
 
-  private def sendMessage(message: Any) =
-    (userRepo ? message).mapTo[Option[User]]
+  def removeFromFollowing(id: String, followingId: String): Future[User] =
+    for {
+      user ← sendMessageTo[User](id, UnfollowUserCommand(followingId))
+      _    = sendMessageTo[User](followingId, UnfollowUserCommand(followingId))
+    } yield user
+
+  def delete(id: String): Future[Boolean] =
+    for {
+      _   ← timelines.deleteForUser(id)
+      _ ← sendMessageTo[Unit](id, DeleteUserCommand)
+    } yield true
 }

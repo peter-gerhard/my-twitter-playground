@@ -25,7 +25,7 @@ class UserTimelineProcessor(val persistenceId: String)
     case cmd: CreateUserTimelineCommand ⇒
       persist(UserTimelineCreatedEvent(persistenceId, cmd.userId)) { event ⇒
         handleCreation(event)
-        reportSuccess(())
+        reportState()
       }
     case _: UserTimelineCommand ⇒
       reportState()
@@ -34,28 +34,28 @@ class UserTimelineProcessor(val persistenceId: String)
   override def receiveWhenInitialized: Receive = {
     case cmd: PostTweetCommand ⇒
       persistUpdateIf(tweetNotFound(cmd.tweetId))(
-        UserTweetedEvent(persistenceId, cmd.tweetId))(
+        UserTweetedEvent(persistenceId, cmd.tweetId),
         AlreadyTweeted(persistenceId, cmd.tweetId))
 
     case cmd: DeleteTweetCommand ⇒
       persistUpdateIf(tweetFound(cmd.tweetId))(
-        UserDeletedTweetEvent(persistenceId, cmd.tweetId))(
+        UserDeletedTweetEvent(persistenceId, cmd.tweetId),
         TweetNotFound(persistenceId, cmd.tweetId))
 
     case cmd: PostRetweetCommand ⇒
       persistUpdateIf(retweetNotFound(cmd.tweetId))(
-        UserRetweetedEvent(persistenceId, cmd.tweetId, cmd.authorId))(
+        UserRetweetedEvent(persistenceId, cmd.tweetId, cmd.authorId),
         AlreadyRetweeted(persistenceId, cmd.tweetId))
 
     case cmd: DeleteRetweetCommand ⇒
       persistUpdateIf(retweetFound(cmd.tweetId))(
-        UserDeletedRetweetEvent(persistenceId, cmd.tweetId))(
+        UserDeletedRetweetEvent(persistenceId, cmd.tweetId),
         RetweetNotFound(persistenceId, cmd.tweetId))
 
     case DeleteUserTimelineCommand  ⇒
       persist(UserTimelineDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()
-        reportState()
+        reportSuccess(())
       }
   }
 
@@ -70,6 +70,8 @@ class UserTimelineProcessor(val persistenceId: String)
 
   private def retweetNotFound(tweetId: String)(timeline: UserTimeline) =
     !timeline.retweets.contains(tweetId)
+
+  override def notFound(id: String): Exception = UserTimelineNotFound(id)
 }
 
 object UserTimelineProcessor {

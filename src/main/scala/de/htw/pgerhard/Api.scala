@@ -11,7 +11,7 @@ import de.heikoseeberger.akkasse.ServerSentEvent
 import de.heikoseeberger.akkasse.EventStreamMarshalling.toEventStream
 import sangria.ast.OperationType
 import sangria.execution.deferred.DeferredResolver
-import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
+import sangria.execution.{ErrorWithResolver, Executor, HandledException, QueryAnalysisError}
 import sangria.marshalling.sprayJson._
 import sangria.parser.QueryParser
 import spray.json._
@@ -27,7 +27,15 @@ object Api extends App {
   import environment.actorMaterializer
   import environment.executionContext
 
-  val executor = Executor(GraphQlSchema.schema, deferredResolver = DeferredResolver.fetchers(GraphQlSchema.tweets, GraphQlSchema.users))
+
+  val exceptionHandler: Executor.ExceptionHandler = {
+    case (m, e) => HandledException("There was an internal server error.")
+  }
+
+  val executor = Executor(
+    GraphQlSchema.schema,
+    deferredResolver = DeferredResolver.fetchers(GraphQlSchema.tweets, GraphQlSchema.users),
+    exceptionHandler = exceptionHandler)
 
   private def executeQuery(query: String, operation: Option[String], variables: JsObject) = {
     QueryParser.parse(query) match {

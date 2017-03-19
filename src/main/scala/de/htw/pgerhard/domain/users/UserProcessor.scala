@@ -12,6 +12,8 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
 
   override def aggregateRootFactory: UserRegisteredEvent => User = User.fromEvent
 
+  override def notFound(id: String) = UserNotFound(id)
+
   override def receiveRecover: Receive = {
     case event: UserRegisteredEvent ⇒ handleCreation(event)
     case _: UserDeletedEvent ⇒ handleDeletion()
@@ -32,34 +34,32 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
 
   override def receiveWhenInitialized: Receive = {
     case cmd: SetUserNameCommand ⇒
-      persist(UserNameSetEvent(persistenceId, cmd.name)) { event ⇒
-        handleUpdate(event)
-        reportState()
-      }
+      persistUpdate(UserNameSetEvent(persistenceId, cmd.name))
+
     case cmd: FollowUserCommand ⇒
       persistUpdateIf(isNotFollowing(cmd.userId))(
-        UserFollowedEvent(persistenceId, cmd.userId))(
+        UserFollowedEvent(persistenceId, cmd.userId),
         UserAlreadyFollows(persistenceId, cmd.userId))
 
     case cmd: UnfollowUserCommand ⇒
       persistUpdateIf(isFollowing(cmd.userId))(
-        UserUnfollowedEvent(persistenceId, cmd.userId))(
+        UserUnfollowedEvent(persistenceId, cmd.userId),
         FollowingNotFound(persistenceId, cmd.userId))
 
     case cmd: AddFollowerCommand ⇒
       persistUpdateIf(isNotFollower(cmd.userId))(
-        FollowerAddedEvent(persistenceId, cmd.userId))(
+        FollowerAddedEvent(persistenceId, cmd.userId),
         UserAlreadyFollows(cmd.userId, persistenceId))
 
     case cmd: RemoveFollowerCommand ⇒
       persistUpdateIf(isFollower(cmd.userId))(
-        FollowerRemovedEvent(persistenceId, cmd.userId))(
+        FollowerRemovedEvent(persistenceId, cmd.userId),
         FollowerNotFound(persistenceId, cmd.userId))
 
     case DeleteUserCommand ⇒
       persist(UserDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()
-        reportState()
+        reportSuccess(())
       }
   }
 

@@ -19,5 +19,4 @@ object UserEvents {
   case class FollowerRemovedEvent(id: String, userId: String) extends UserEvent
 
   case class UserDeletedEvent(id: String) extends UserEvent
-
 }

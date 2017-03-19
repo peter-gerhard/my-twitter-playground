@@ -4,9 +4,8 @@ import akka.actor.Props
 import de.htw.pgerhard.domain.{Envelope, Get}
 import de.htw.pgerhard.domain.generic.{AggregateRootProcessor, Repository}
 import de.htw.pgerhard.domain.timeline.UserTimelineCommands.CreateUserTimelineCommand
-import de.htw.pgerhard.domain.timeline.UserTimelineErrors.UserTimelineError
 
-class UserTimelineRepository extends Repository[UserTimeline, UserTimelineError] {
+class UserTimelineRepository extends Repository[UserTimeline] {
 
   override def processor: (String) ⇒ AggregateRootProcessor[UserTimeline] =
     UserTimelineProcessor.apply

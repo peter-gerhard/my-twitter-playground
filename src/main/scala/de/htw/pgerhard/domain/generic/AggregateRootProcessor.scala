@@ -1,9 +1,9 @@
 package de.htw.pgerhard.domain.generic
 
 import akka.actor.ActorLogging
-import akka.actor.Status.Failure
+import akka.actor.Status.{Failure, Success}
 import akka.persistence.{PersistenceFailure, PersistentActor}
-import de.htw.pgerhard.domain.Get
+import de.htw.pgerhard.domain.{Get, GetOpt}
 
 trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with ActorLogging {
 
@@ -14,6 +14,7 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
   def receiveRecover: Receive
   def receiveBeforeInitialization: Receive
   def receiveWhenInitialized: Receive
+  def notFound(id: String): Exception
 
   var state: Option[A] = None
 
@@ -22,6 +23,8 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
   private def default: Receive = {
     case Get ⇒
       reportState()
+    case GetOpt ⇒
+      reportSuccess(state)
     case PersistenceFailure(payload, snr, e) =>
       println(s"persistence failed (payload = $payload, sequenceNr = $snr, error = ${e.getMessage})")
   }
@@ -51,27 +54,30 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
     super.preRestart(reason, message)
   }
 
-  def persistUpdate(event: Event[A]): Unit =
-    persist(event) { event ⇒
-      handleUpdate(event)
-      reportSuccess(())
-    }
-
-  def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A])(error: ⇒ Exception): Unit =
-    state.filter(condition)
-      .fold(reportFailure(error)) { _ ⇒
+  protected def persistUpdate(event: Event[A], result: A ⇒ Any = identity): Unit =
+    state
+      .fold(reportFailure(notFound(persistenceId))) { s ⇒
         persist(event) { event ⇒
           handleUpdate(event)
-          reportSuccess(())
+          reportSuccess(result(s))
         }
       }
 
-  protected def reportState(): Unit =
-    sender() ! state
+  protected def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A], error: ⇒ Exception, result: A ⇒ Any = identity): Unit =
+    state.filter(condition)
+      .fold(reportFailure(error)) { s ⇒
+        persist(event) { event ⇒
+          handleUpdate(event)
+          reportSuccess(result(s))
+        }
+      }
 
-  def reportSuccess(result: Any): Unit =
-    sender ! result
+  protected def reportSuccess(result: Any): Unit =
+    sender ! Success(result)
 
-  def reportFailure(e: Exception): Unit =
+  protected def reportFailure(e: Exception): Unit =
     sender ! Failure(e)
+
+  protected def reportState(): Unit =
+    state.fold(reportFailure(notFound(persistenceId)))(reportSuccess)
 }

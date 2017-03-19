@@ -31,4 +31,4 @@ lazy val akkaVersion = "2.4.16"
 lazy val akkaHttpVersion = "10.0.3"
 lazy val sangriaVersion = "1.0.0"
 
-fork in run := true
+fork := true
