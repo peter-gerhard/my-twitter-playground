@@ -1,9 +1,8 @@
 package de.htw.pgerhard.domain.timeline
 
 import akka.actor.Props
-import de.htw.pgerhard.domain.{Envelope, Get}
+import de.htw.pgerhard.domain.{Envelope, Get, GetOpt}
 import de.htw.pgerhard.domain.generic.{AggregateRootProcessor, Repository}
-import de.htw.pgerhard.domain.timeline.UserTimelineCommands.CreateUserTimelineCommand
 
 class UserTimelineRepository extends Repository[UserTimeline] {
 
@@ -14,11 +13,11 @@ class UserTimelineRepository extends Repository[UserTimeline] {
     Props(UserTimelineView(persistenceId, viewId))
 
   override def receive: Receive = {
-    case Envelope(id, Get) ⇒
+    case Envelope(id, GetView) ⇒
       getView(id) forward Get
-    case cmd: CreateUserTimelineCommand ⇒
-      getProcessor(randomId) forward cmd
-    case Envelope(id, cmd) ⇒
-      getProcessor(id) forward cmd
+    case Envelope(id, msg) ⇒
+      getProcessor(id) forward msg
   }
 }
+
+case object GetView

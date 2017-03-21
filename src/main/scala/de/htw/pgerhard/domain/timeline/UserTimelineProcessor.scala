@@ -55,7 +55,7 @@ class UserTimelineProcessor(val persistenceId: String)
     case DeleteUserTimelineCommand  ⇒
       persist(UserTimelineDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()
-        reportSuccess(())
+        reportSuccess(true)
       }
   }
 

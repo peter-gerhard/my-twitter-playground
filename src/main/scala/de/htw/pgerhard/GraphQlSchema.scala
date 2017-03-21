@@ -24,13 +24,13 @@ object GraphQlSchema {
       "A history of tweets and retweets of a user",
       () ⇒ fields[Environment, UserTimelineProjection](
         Field("id", StringType,
-          Some(""),
+          Some("The id of the user timeline."),
           resolve = _.value.id),
         Field("userId", StringType,
-          Some(""),
+          Some("The user the timeline belongs to."),
           resolve = _.value.userId),
         Field("tweets", ListType(WithTweetType),
-          Some(""),
+          Some("A list of tweets and retweets the user made."),
           resolve = _.value.tweets)))
 
   lazy val WithTweetType: InterfaceType[Environment, WithTweet] =
@@ -38,8 +38,8 @@ object GraphQlSchema {
       "WithTweet",
       "A retweet or a reference to a tweet",
       () ⇒ fields[Environment, WithTweet](
-        Field("tweet", TweetType,
-          Some(""),
+        Field("tweet", OptionType(TweetType),
+          Some("The referenced tweet."),
           resolve = ctx ⇒ tweets.defer(ctx.value.tweetId))))
 
   lazy val RetweetType: ObjectType[Environment, Retweet] =
@@ -48,9 +48,12 @@ object GraphQlSchema {
       "A retweet",
       interfaces[Environment, Retweet](WithTweetType),
       fields[Environment, Retweet](
-        Field("tweet", TweetType,
-          Some(""),
-          resolve = ctx ⇒ tweets.defer(ctx.value.tweetId))))
+        Field("tweet", OptionType(TweetType),
+          Some("the tweet that was retweeted"),
+          resolve = ctx ⇒ tweets.deferOpt(ctx.value.tweetId)),
+        Field("user", UserType,
+          Some("The user who retweeted."),
+          resolve = ctx ⇒ users.defer(ctx.value.userId))))
 
   lazy val TweetRefType: ObjectType[Environment, TweetRef] =
     ObjectType(
@@ -58,9 +61,9 @@ object GraphQlSchema {
       "A Reference to a tweet",
       interfaces[Environment, TweetRef](WithTweetType),
       fields[Environment, TweetRef](
-        Field("tweet", TweetType,
-          Some(""),
-          resolve = ctx ⇒ tweets.defer(ctx.value.tweetId))))
+        Field("tweet", OptionType(TweetType),
+          Some("The referenced tweet."),
+          resolve = ctx ⇒ tweets.deferOpt(ctx.value.tweetId))))
 
   lazy val TweetType: ObjectType[Environment, Tweet] =
     ObjectType(
@@ -108,20 +111,18 @@ object GraphQlSchema {
           resolve = ctx ⇒ users.deferSeq(ctx.value.followers.toList))))
 
   val TweetIdArg = Argument("tweetId", StringType, description = "Id of the tweet")
-  val AuthorArg = Argument("authorId", StringType, description = "Id of the author")
   val UserArg = Argument("userId", StringType, description = "Id of the user")
   val BodyArg = Argument("body", StringType, description = "The body of the tweet")
-
   val UserIdArg = Argument("userId", StringType, description = "Id of the subject user")
-  val followingIdArg = Argument("followingId", StringType, description = "Id of the user to follow")
+  val FollowingIdArg = Argument("followingId", StringType, description = "Id of the user to follow")
   val HandleArg = Argument("handle", StringType, description = "handle of the user")
   val NameArg = Argument("name", StringType, description = "name of the user")
 
   val QueryType = ObjectType(
     "Query", fields[Environment, Unit](
-      Field("tweet", TweetType,
-        arguments = TweetIdArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.tweets.getById(ctx.arg(TweetIdArg))),
+      Field("timeline", UserTimelineType,
+        arguments = UserIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.userTimelines.getForUser(ctx.arg(UserIdArg))),
       Field("user", UserType,
         arguments = UserIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.getById(ctx.arg(UserIdArg)))))
@@ -130,7 +131,7 @@ object GraphQlSchema {
     "Mutation", fields[Environment, Unit](
       // UserTimeline Mutations
       Field("postTweet", TweetType,
-        arguments = UserIdArg :: AuthorArg :: BodyArg :: Nil,
+        arguments = UserIdArg :: BodyArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.postTweet(ctx.arg(UserIdArg), ctx.arg(BodyArg))),
       Field("deleteTweet", BooleanType,
         arguments = UserIdArg :: TweetIdArg :: Nil,
@@ -150,22 +151,14 @@ object GraphQlSchema {
         arguments = UserIdArg :: NameArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.setName(ctx.arg(UserIdArg), ctx.arg(NameArg))),
       Field("followUser", OptionType(UserType),
-        arguments = UserIdArg :: followingIdArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.users.addToFollowing(ctx.arg(UserIdArg), ctx.arg(followingIdArg))),
+        arguments = UserIdArg :: FollowingIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.users.addToFollowing(ctx.arg(UserIdArg), ctx.arg(FollowingIdArg))),
       Field("unfollowUser", OptionType(UserType),
-        arguments = UserIdArg :: followingIdArg :: Nil,
-        resolve = (ctx) ⇒ ctx.ctx.users.removeFromFollowing(ctx.arg(UserIdArg), ctx.arg(followingIdArg))),
+        arguments = UserIdArg :: FollowingIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.users.removeFromFollowing(ctx.arg(UserIdArg), ctx.arg(FollowingIdArg))),
       Field("deleteUser", BooleanType,
         arguments = UserIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.users.delete(ctx.arg(UserIdArg)))))
 
-//  val SubscriptionType = ObjectType("Subscription", fields[Environment, Unit](
-//    Field.subs("test", TweetType,
-//      arguments = Nil,
-//      resolve = ctx ⇒ ctx
-//    )
-//  )
-
-
-  val schema = Schema(QueryType, Some(MutationType))
+  val schema = Schema(QueryType, Some(MutationType), additionalTypes = List(TweetRefType))
 }

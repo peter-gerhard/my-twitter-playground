@@ -13,12 +13,13 @@ trait Repository[A <: AggregateRoot[A]] extends Actor with ActorLogging {
     */
   protected def viewProps(persistenceId: String, viewId: String): Props = ???
 
-  protected def getView(id: String): ActorRef =
-    (context child viewId(id)).getOrElse(createView(id))
-
-  private def createView(id: String): ActorRef = {
+  protected def getView(id: String): ActorRef = {
     val vid = viewId(id)
-    val actor = context.actorOf(viewProps(id, vid), vid)
+    (context child vid).getOrElse(createView(id, vid))
+  }
+
+  private def createView(id: String, viewId: String): ActorRef = {
+    val actor = context.actorOf(viewProps(id, viewId), viewId)
     context watch actor
     actor
   }
@@ -36,5 +37,5 @@ trait Repository[A <: AggregateRoot[A]] extends Actor with ActorLogging {
     UUID.randomUUID().toString
 
   private def viewId(persistenceId: String): String =
-    s"view_$persistenceId"
+    s"view-$persistenceId"
 }

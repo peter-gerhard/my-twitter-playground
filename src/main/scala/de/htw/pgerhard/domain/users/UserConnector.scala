@@ -7,39 +7,43 @@ import de.htw.pgerhard.domain.timeline.UserTimelineConnector
 import de.htw.pgerhard.domain.users.UserCommands._
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.reflect.ClassTag
 
+// Split connector and orchestration
 class UserConnector(
     val repo: ActorRef,
     val timelines: UserTimelineConnector)(
   override implicit
     val ec: ExecutionContext,
-    val timeout: Timeout)
+    val timeout: Timeout,
+    val ct: ClassTag[User])
   extends Connector[User] {
 
   def register(handle: String, name: String): Future[User] =
     for {
-      user ← sendMessage[User](RegisterUserCommand(handle, name))
-      _    ← timelines.createForUser(user.id)
+      user ← sendMessage(RegisterUserCommand(handle, name)).mapTo[User]
+      tl   ← timelines.createForUser(user.id)
+      _    = println(tl.id)
     } yield user
 
   def setName(id: String, name: String): Future[User] =
-    sendMessageTo(id, SetUserNameCommand(name))
+    sendMessageTo(id, SetUserNameCommand(name)).mapTo[User]
 
   def addToFollowing(id: String, followingId: String): Future[User] =
     for {
-      user ← sendMessageTo[User](id, FollowUserCommand(followingId))
-      _    = sendMessageTo[User](followingId, AddFollowerCommand(id))
+      user ← sendMessageTo(id, FollowUserCommand(followingId)).mapTo[User]
+      _    ← sendMessageTo(followingId, AddFollowerCommand(id)).mapTo[User]
     } yield user
 
   def removeFromFollowing(id: String, followingId: String): Future[User] =
     for {
-      user ← sendMessageTo[User](id, UnfollowUserCommand(followingId))
-      _    = sendMessageTo[User](followingId, UnfollowUserCommand(followingId))
+      user ← sendMessageTo(id, UnfollowUserCommand(followingId)).mapTo[User]
+      _    ← sendMessageTo(followingId, RemoveFollowerCommand(id)).mapTo[User]
     } yield user
 
   def delete(id: String): Future[Boolean] =
     for {
       _   ← timelines.deleteForUser(id)
-      _ ← sendMessageTo[Unit](id, DeleteUserCommand)
-    } yield true
+      res ← sendMessageTo(id, DeleteUserCommand).mapTo[Boolean]
+    } yield res
 }

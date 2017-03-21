@@ -29,7 +29,7 @@ object Api extends App {
 
 
   val exceptionHandler: Executor.ExceptionHandler = {
-    case (m, e) => HandledException("There was an internal server error.")
+    case (m, e) => HandledException(s"There was an internal server error. ${e.getMessage} ")
   }
 
   val executor = Executor(
@@ -62,18 +62,17 @@ object Api extends App {
                 })
           case _ ⇒
             complete(
-              Executor.execute(
-                  GraphQlSchema.schema,
-                  queryAst,
-                  environment,
-                  variables = variables,
-                  operationName = operation,
-                  deferredResolver = DeferredResolver.fetchers(GraphQlSchema.tweets, GraphQlSchema.users))
-                .map(OK → _)
-                .recover {
-                  case error: QueryAnalysisError ⇒ BadRequest → error.resolveError
-                  case error: ErrorWithResolver ⇒ InternalServerError → error.resolveError
-                })
+              executor.execute(
+                queryAst,
+                environment,
+                root = (),
+                operationName = operation,
+                variables = variables)
+              .map(OK → _)
+              .recover {
+                case error: QueryAnalysisError ⇒ BadRequest → error.resolveError
+                case error: ErrorWithResolver ⇒ InternalServerError → error.resolveError
+              })
         }
       case Failure(error) ⇒
         complete(BadRequest, JsObject("error" → JsString(error.getMessage)))

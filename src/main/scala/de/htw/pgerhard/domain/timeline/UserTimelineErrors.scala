@@ -4,7 +4,9 @@ import de.htw.pgerhard.domain.generic.{Error, UserFacingError}
 
 object UserTimelineErrors {
 
-  case class UserTimelineNotFound(id: String) extends Error
+  case class UserTimelineNotFound(id: String) extends UserFacingError {
+    override def getMessage(): String = s"User timeline '$id' not found."
+  }
 
   case class AlreadyTweeted(timelineId: String, tweetId: String) extends Error
 

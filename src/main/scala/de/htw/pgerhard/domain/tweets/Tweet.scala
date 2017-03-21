@@ -13,8 +13,8 @@ case class Tweet(
   extends AggregateRoot[Tweet] {
 
   def updated(event: Event[Tweet]): Tweet = event match {
-//    case RetweeterAddedEvent(tweetId, userId, _) ⇒ copy(retweeters = retweeters + userId)
-//    case RetweeterRemovedEvent(tweetId, userId) ⇒ copy(retweeters = retweeters - userId)
+    case RetweeterAddedEvent(tweetId, userId) ⇒ copy(retweeters = retweeters + userId)
+    case RetweeterRemovedEvent(tweetId, userId) ⇒ copy(retweeters = retweeters - userId)
 //    case LikerAddedEvent(tweetId, userId) ⇒ copy(likers = likers + userId)
 //    case LikerRemovedEvent(tweetId, userId) ⇒ copy(likers = likers - userId)
     case _ ⇒ throw new IllegalArgumentException

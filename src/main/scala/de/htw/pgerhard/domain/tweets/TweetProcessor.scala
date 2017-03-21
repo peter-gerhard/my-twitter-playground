@@ -58,7 +58,7 @@ class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[T
     case DeleteTweetCommand ⇒
       persist(TweetDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()
-        reportSuccess(())
+        reportSuccess(true)
       }
   }
 

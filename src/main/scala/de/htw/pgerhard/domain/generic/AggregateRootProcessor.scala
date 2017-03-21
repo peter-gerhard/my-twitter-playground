@@ -54,21 +54,21 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
     super.preRestart(reason, message)
   }
 
-  protected def persistUpdate(event: Event[A], result: A ⇒ Any = identity): Unit =
+  protected def persistUpdate(event: Event[A]): Unit =
     state
       .fold(reportFailure(notFound(persistenceId))) { s ⇒
         persist(event) { event ⇒
           handleUpdate(event)
-          reportSuccess(result(s))
+          reportState()
         }
       }
 
-  protected def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A], error: ⇒ Exception, result: A ⇒ Any = identity): Unit =
+  protected def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A], error: ⇒ Exception): Unit =
     state.filter(condition)
       .fold(reportFailure(error)) { s ⇒
         persist(event) { event ⇒
           handleUpdate(event)
-          reportSuccess(result(s))
+          reportState()
         }
       }
 

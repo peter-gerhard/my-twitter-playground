@@ -59,7 +59,7 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
     case DeleteUserCommand ⇒
       persist(UserDeletedEvent(persistenceId)) { _ ⇒
         handleDeletion()
-        reportSuccess(())
+        reportSuccess(true)
       }
   }
 
