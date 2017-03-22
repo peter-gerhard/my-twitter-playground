@@ -27,7 +27,6 @@ object Api extends App {
   import environment.actorMaterializer
   import environment.executionContext
 
-
   val exceptionHandler: Executor.ExceptionHandler = {
     case (m, e) => HandledException(s"There was an internal server error. ${e.getMessage} ")
   }

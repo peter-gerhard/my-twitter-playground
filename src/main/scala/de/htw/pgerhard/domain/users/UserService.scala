@@ -3,16 +3,15 @@ package de.htw.pgerhard.domain.users
 import akka.actor.ActorRef
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic.Connector
-import de.htw.pgerhard.domain.timeline.UserTimelineConnector
+import de.htw.pgerhard.domain.timeline.UserTimelineService
 import de.htw.pgerhard.domain.users.UserCommands._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-// Split connector and orchestration
-class UserConnector(
+class UserService(
     val repo: ActorRef,
-    val timelines: UserTimelineConnector)(
+    val timelines: UserTimelineService)(
   override implicit
     val ec: ExecutionContext,
     val timeout: Timeout,

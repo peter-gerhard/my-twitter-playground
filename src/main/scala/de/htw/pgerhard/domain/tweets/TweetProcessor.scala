@@ -1,6 +1,5 @@
 package de.htw.pgerhard.domain.tweets
 
-import akka.persistence.RecoveryFailure
 import de.htw.pgerhard.domain.generic.AggregateRootProcessor
 import de.htw.pgerhard.domain.tweets.TweetCommands._
 import de.htw.pgerhard.domain.tweets.TweetErrors._
@@ -19,8 +18,6 @@ class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[T
       handleUpdate(event)
     case TweetDeletedEvent ⇒
       handleDeletion()
-    case RecoveryFailure(e) =>
-      log.debug(e.getMessage)
   }
 
   override def receiveBeforeInitialization: Receive = {

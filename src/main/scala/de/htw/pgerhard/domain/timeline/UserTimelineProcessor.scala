@@ -1,6 +1,5 @@
 package de.htw.pgerhard.domain.timeline
 
-import akka.persistence.RecoveryFailure
 import de.htw.pgerhard.domain.generic.AggregateRootProcessor
 import de.htw.pgerhard.domain.timeline.UserTimelineCommands._
 import de.htw.pgerhard.domain.timeline.UserTimelineErrors._
@@ -17,8 +16,6 @@ class UserTimelineProcessor(val persistenceId: String)
     case event: UserTimelineCreatedEvent ⇒ handleCreation(event)
     case _: UserTimelineDeletedEvent ⇒ handleDeletion()
     case event: UserTimelineEvent ⇒ handleUpdate(event)
-    case RecoveryFailure(e) =>
-      println(s"recovery failed (error = ${e.getMessage})")
   }
 
   override def receiveBeforeInitialization: Receive = {

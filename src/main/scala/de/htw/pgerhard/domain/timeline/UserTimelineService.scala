@@ -6,14 +6,14 @@ import de.htw.pgerhard.domain.generic.Connector
 import de.htw.pgerhard.domain.timeline.UserTimelineCommands._
 import de.htw.pgerhard.domain.timeline.UserTimelineErrors.TweetNotFound
 import de.htw.pgerhard.domain.tweets.TweetErrors.RetweeterNotFound
-import de.htw.pgerhard.domain.tweets.{Tweet, TweetConnector}
+import de.htw.pgerhard.domain.tweets.{Tweet, TweetService}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-class UserTimelineConnector(
+class UserTimelineService(
     val repo: ActorRef,
-    val tweets: TweetConnector)(
+    val tweets: TweetService)(
   override implicit
     val ec: ExecutionContext,
     val timeout: Timeout,

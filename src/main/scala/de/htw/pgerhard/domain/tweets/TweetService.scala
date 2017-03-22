@@ -8,7 +8,7 @@ import de.htw.pgerhard.domain.tweets.TweetCommands._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-class TweetConnector(
+class TweetService(
     val repo: ActorRef)(
   override implicit
     val ec: ExecutionContext,

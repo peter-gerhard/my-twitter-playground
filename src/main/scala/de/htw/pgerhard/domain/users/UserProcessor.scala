@@ -1,6 +1,5 @@
 package de.htw.pgerhard.domain.users
 
-import akka.persistence.RecoveryFailure
 import de.htw.pgerhard.domain.generic.AggregateRootProcessor
 import de.htw.pgerhard.domain.users.UserCommands._
 import de.htw.pgerhard.domain.users.UserErrors._
@@ -18,8 +17,6 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
     case event: UserRegisteredEvent ⇒ handleCreation(event)
     case _: UserDeletedEvent ⇒ handleDeletion()
     case event: UserEvent ⇒ handleUpdate(event)
-    case RecoveryFailure(e) =>
-      println(s"recovery failed (error = ${e.getMessage})")
   }
 
   override def receiveBeforeInitialization: Receive = {

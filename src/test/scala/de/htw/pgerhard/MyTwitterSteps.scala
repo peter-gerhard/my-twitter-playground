@@ -53,7 +53,7 @@ trait MyTwitterSteps {
     }
 
   def delete_user(id: String): Step =
-    AttachAs("delete user '$id'.") {
+    AttachAs(s"delete user '$id'.") {
       When I query_gql("/graphql")
         .withVariables(
           "userId" → id)
@@ -102,6 +102,24 @@ trait MyTwitterSteps {
                 id
               }
               retweetCount
+            }
+          """)
+
+      And assert status.is(200)
+    }
+
+  def query_home_timeline_for_user(id: String): Step =
+    AttachAs(s"query home timeine for user '$id'.") {
+      When I query_gql("/graphql")
+        .withVariables(
+          "userId" → id)
+        .withQuery(
+          graphql"""
+            query QueryHomeTimeline($$userId: String!) {
+              homeTimeline(userId: $$userId) {
+                author { id }
+                body
+              }
             }
           """)
 

@@ -120,6 +120,9 @@ object GraphQlSchema {
 
   val QueryType = ObjectType(
     "Query", fields[Environment, Unit](
+      Field("homeTimeline", ListType(TweetType),
+        arguments = UserIdArg :: Nil,
+        resolve = (ctx) ⇒ ctx.ctx.homeTimeLines.getForUser(ctx.arg(UserIdArg))),
       Field("timeline", UserTimelineType,
         arguments = UserIdArg :: Nil,
         resolve = (ctx) ⇒ ctx.ctx.userTimelines.getForUser(ctx.arg(UserIdArg))),

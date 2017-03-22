@@ -2,7 +2,7 @@ package de.htw.pgerhard.domain.generic
 
 import akka.actor.ActorLogging
 import akka.actor.Status.{Failure, Success}
-import akka.persistence.{PersistenceFailure, PersistentActor}
+import akka.persistence.PersistentActor
 import de.htw.pgerhard.domain.{Get, GetOpt}
 
 trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with ActorLogging {
@@ -25,8 +25,6 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
       reportState()
     case GetOpt ⇒
       reportSuccess(state)
-    case PersistenceFailure(payload, snr, e) =>
-      println(s"persistence failed (payload = $payload, sequenceNr = $snr, error = ${e.getMessage})")
   }
 
   protected def handleCreation(event: CreatedEvent): Unit = {
