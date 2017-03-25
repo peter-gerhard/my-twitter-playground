@@ -1,18 +1,48 @@
 package de.htw.pgerhard.domain.users
 
-import de.htw.pgerhard.domain.Envelope
-import de.htw.pgerhard.domain.generic.{AggregateRootProcessor, Repository}
-import de.htw.pgerhard.domain.users.UserCommands._
+import akka.actor.{ActorRef, Props}
+import akka.util.Timeout
+import de.htw.pgerhard.domain.generic.{Envelope, Repository, RepositoryConnector}
+import de.htw.pgerhard.domain.users.commands._
 
-class UserRepository extends Repository[User] {
+import scala.concurrent.{ExecutionContext, Future}
 
-  override def processor: (String) ⇒ AggregateRootProcessor[User] =
-    UserProcessor.apply
+class UserRepository(
+    val repository: ActorRef)(
+  override implicit
+    val ec: ExecutionContext,
+    val timeout: Timeout)
+  extends RepositoryConnector {
+
+  def registerUser(handle: String, name: String): Future[User] =
+    askRepo(RegisterUserCommand(handle, name)).mapTo[User]
+
+  def setUserName(userId: String, name: String): Future[User] =
+    askRepo(userId, SetUserNameCommand(name)).mapTo[User]
+
+  def addSubscription(userId: String, subscriptionId: String): Future[User] =
+    askRepo(userId, AddSubscriptionCommand(subscriptionId)).mapTo[User]
+
+  def removeSubscription(userId: String, subscriptionId: String): Future[User] =
+    askRepo(userId, RemoveSubscriptionCommand(subscriptionId)).mapTo[User]
+
+  def deleteUser(userId: String): Future[Boolean] =
+    askRepo(userId, DeleteUserCommand).mapTo[Boolean]
+}
+
+class UserRepositoryActor extends Repository {
+
+  override protected def childProps(id: String): Props = UserProcessor.props(id)
 
   override def receive: Receive = {
     case cmd: RegisterUserCommand ⇒
-      getProcessor(randomId) forward cmd
-    case Envelope(id, cmd) ⇒
-      getProcessor(id) forward cmd
+      getChild(randomId) ! cmd
+
+    case env: Envelope ⇒
+      getChild(env.id) ! env.msg
   }
+}
+
+object UserRepositoryActor {
+  def props: Props = Props(new UserRepositoryActor)
 }

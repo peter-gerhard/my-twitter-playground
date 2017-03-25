@@ -3,10 +3,9 @@ package de.htw.pgerhard
 import akka.actor.{ActorSystem, Props}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import de.htw.pgerhard.domain.home.HomeTimelineService
-import de.htw.pgerhard.domain.timeline.{UserTimelineService, UserTimelineRepository}
-import de.htw.pgerhard.domain.tweets.{TweetService, TweetRepository}
-import de.htw.pgerhard.domain.users.{UserService, UserRepository}
+import de.htw.pgerhard.domain.timelines.{HomeTimelineView, HomeTimelineViewActor, UserTimelineView, UserTimelineViewActor}
+import de.htw.pgerhard.domain.tweets._
+import de.htw.pgerhard.domain.users._
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
@@ -18,10 +17,14 @@ trait Environment {
   implicit def actorMaterializer: ActorMaterializer
   implicit def executionContext: ExecutionContext
 
-  def users: UserService
-  def tweets: TweetService
-  def userTimelines: UserTimelineService
-  def homeTimeLines: HomeTimelineService
+  def users: UserView
+  def tweets: TweetView
+  def userTimelines: UserTimelineView
+  def homeTimelines: HomeTimelineView
+
+  def userCommands: UserCommandService
+  def tweetCommands: TweetCommandService
+
 }
 
 class DefaultEnvironment extends Environment {
@@ -34,11 +37,18 @@ class DefaultEnvironment extends Environment {
 
   implicit val timeout = Timeout(5 seconds)
 
-  override lazy val users: UserService = new UserService(actorSystem.actorOf(Props[UserRepository]), userTimelines)
+  override val users = new UserView(actorSystem.actorOf(UserViewActor.props))
 
-  override lazy val tweets: TweetService = new TweetService(actorSystem.actorOf(Props[TweetRepository]))
+  override val tweets = new TweetView(actorSystem.actorOf(TweetViewActor.props))
 
-  override lazy val userTimelines = new UserTimelineService(actorSystem.actorOf(Props[UserTimelineRepository]), tweets)
+  override val userTimelines = new UserTimelineView(actorSystem.actorOf(UserTimelineViewActor.props))
 
-  override lazy val homeTimeLines = new HomeTimelineService(users, tweets, userTimelines)
+  override val homeTimelines = new HomeTimelineView(actorSystem.actorOf(HomeTimelineViewActor.props))
+
+
+  val userRepository = new UserRepository(actorSystem.actorOf(UserRepositoryActor.props))
+  val userCommands = new UserCommandService(userRepository)
+
+  val tweetRepository = new TweetRepository(actorSystem.actorOf(TweetRepositoryActor.props))
+  val tweetCommands = new TweetCommandService(users, tweets, tweetRepository)
 }

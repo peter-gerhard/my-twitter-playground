@@ -1,27 +1,30 @@
 package de.htw.pgerhard.domain.tweets
 
-import de.htw.pgerhard.domain.generic.{AggregateRoot, Event}
-import de.htw.pgerhard.domain.tweets.TweetEvents._
+import de.htw.pgerhard.domain.generic.{AggregateRoot, AggregateRootFactory}
+import de.htw.pgerhard.domain.tweets.events._
 
 case class Tweet(
     id: String,
     authorId: String,
     timestamp: Long,
     body: String,
-    likers: Set[String],
-    retweeters: Set[String])
-  extends AggregateRoot[Tweet] {
+    likedBy: Set[String],
+    repostedBy: Set[String])
+  extends AggregateRoot[Tweet, TweetEvent] {
 
-  def updated(event: Event[Tweet]): Tweet = event match {
-    case RetweeterAddedEvent(tweetId, userId) ⇒ copy(retweeters = retweeters + userId)
-    case RetweeterRemovedEvent(tweetId, userId) ⇒ copy(retweeters = retweeters - userId)
-//    case LikerAddedEvent(tweetId, userId) ⇒ copy(likers = likers + userId)
-//    case LikerRemovedEvent(tweetId, userId) ⇒ copy(likers = likers - userId)
+  def updated(event: TweetEvent): Tweet = event match {
+    case ev: TweetRepostedEvent      ⇒ copy(repostedBy = repostedBy + ev.userId)
+    case ev: TweetRepostDeletedEvent ⇒ copy(repostedBy = repostedBy - ev.userId)
     case _ ⇒ throw new IllegalArgumentException
   }
 }
 
-object Tweet {
-  def fromEvent(ev: TweetCreatedEvent) =
-    Tweet(ev.id, ev.authorId, ev.timestamp, ev.body, Set.empty, Set.empty)
+object Tweet extends AggregateRootFactory[Tweet, TweetEvent] {
+  def fromCreatedEvent(event: TweetEvent): Tweet = event match {
+    case ev: TweetPostedEvent ⇒
+      Tweet(ev.tweetId, ev.authorId, ev.timestamp, ev.body, Set.empty, Set.empty)
+
+    case _ ⇒
+      throw new IllegalArgumentException
+  }
 }

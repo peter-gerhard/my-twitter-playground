@@ -1,39 +1,36 @@
 package de.htw.pgerhard.domain.generic
 
 import akka.actor.ActorLogging
-import akka.actor.Status.{Failure, Success}
-import akka.persistence.PersistentView
-import de.htw.pgerhard.domain.{Get, GetOpt}
+import akka.stream.actor.ActorSubscriberMessage._
+import akka.stream.actor.{ActorSubscriber, OneByOneRequestStrategy, RequestStrategy}
 
-trait View[A] extends PersistentView with ActorLogging {
+trait View extends ActorSubscriber with ActorLogging {
 
-  private var state: Option[A] = None
+  type EventHandler = PartialFunction[Event, Unit]
 
-  def receiveEvent: Receive
+  protected def handleEvent: EventHandler
 
-  def notFound(id: String): Exception
+  protected def receiveClientMessage: Receive
 
-  private def default: Receive = {
-    case Get ⇒
-      reportState()
-    case GetOpt ⇒
-      reportSuccess(state)
+  override protected def requestStrategy: RequestStrategy =
+    OneByOneRequestStrategy
+
+  override def receive: Receive =
+    receiveEventMessage orElse receiveClientMessage
+
+  private def receiveEventMessage: Receive = {
+    case msg: OnNext ⇒
+      val ev: Event = msg.element.asInstanceOf[Event]
+      if (handleEvent.isDefinedAt(ev)) handleEvent(ev)
+
+    case msg: OnError ⇒
+      log.debug(msg.cause.getMessage)
+
+    case OnComplete ⇒
+      log.debug("Stream to view completed unexpectedly.")
   }
-
-  override def receive: Receive = receiveEvent orElse default
-
-  def setState(newState: Option[A]): Unit =
-    state = newState
-
-  def alterState(fn: A ⇒ A): Unit =
-    state = state.map(fn)
-
-  def reportState(): Unit =
-    state.fold(reportFailure(notFound(persistenceId)))(reportSuccess)
-
-  protected def reportSuccess(result: Any): Unit =
-    sender ! Success(result)
-
-  protected def reportFailure(e: Exception): Unit =
-    sender ! Failure(e)
 }
+
+case class GetById(id: String)
+case class GetOptById(id: String)
+case class GetSeqByIds(ids: Seq[String])

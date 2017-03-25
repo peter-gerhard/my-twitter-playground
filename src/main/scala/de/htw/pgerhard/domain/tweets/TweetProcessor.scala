@@ -1,81 +1,65 @@
 package de.htw.pgerhard.domain.tweets
 
-import de.htw.pgerhard.domain.generic.AggregateRootProcessor
-import de.htw.pgerhard.domain.tweets.TweetCommands._
-import de.htw.pgerhard.domain.tweets.TweetErrors._
-import de.htw.pgerhard.domain.tweets.TweetEvents._
+import de.htw.pgerhard.domain.generic.{AggregateRootFactory, AggregateRootProcessor}
+import de.htw.pgerhard.domain.tweets.commands._
+import de.htw.pgerhard.domain.tweets.errors._
+import de.htw.pgerhard.domain.tweets.events._
 
-class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[Tweet] {
+class TweetProcessor(val persistenceId: String) extends AggregateRootProcessor[Tweet, TweetEvent] {
 
-  override type CreatedEvent = TweetCreatedEvent
-
-  override def aggregateRootFactory: (TweetCreatedEvent) => Tweet = Tweet.fromEvent
+  override def factory: AggregateRootFactory[Tweet, TweetEvent] = Tweet
 
   override def receiveRecover: Receive = {
-    case event: TweetCreatedEvent ⇒
-      handleCreation(event)
-    case event: TweetEvent ⇒
-      handleUpdate(event)
-    case TweetDeletedEvent ⇒
-      handleDeletion()
+    case ev: TweetPostedEvent  ⇒ handleCreation(ev)
+    case ev: TweetDeletedEvent ⇒ handleDeletion()
+    case ev: TweetEvent        ⇒ handleUpdate(ev)
   }
 
-  override def receiveBeforeInitialization: Receive = {
-    case CreateTweetCommand(authorId, body) ⇒
-      persist(TweetCreatedEvent(persistenceId, authorId, body, timestamp)) { event ⇒
-        handleCreation(event)
+  override def uninitialized: Receive = {
+    case cmd: PostTweetCommand ⇒
+      persist(TweetPostedEvent(persistenceId, cmd.authorId, cmd.body, currentTimestamp)) { ev ⇒
+        handleCreation(ev)
         reportState()
       }
 
-    case _: TweetCommand ⇒
-      reportState()
+    case _ ⇒
+      reportFailure(notFound)
   }
 
-  override def receiveWhenInitialized: Receive = {
-    case cmd: AddRetweeterCommand ⇒
+  override def initialized: Receive = {
+    case cmd: PostTweetCommand ⇒
+      reportFailure(TweetAlreadyExists(persistenceId))
+
+    case cmd: RepostTweetCommand ⇒
       persistUpdateIf(userHasNotRetweeted(cmd.userId))(
-        RetweeterAddedEvent(persistenceId, cmd.userId),
-        DuplicateRetweet(persistenceId, cmd.userId))
+        TweetRepostedEvent(persistenceId, cmd.authorId, cmd.userId),
+        DuplicateRepost(persistenceId, cmd.userId))
 
-    case cmd: RemoveRetweeterCommand ⇒
+    case cmd: DeleteRepostCommand ⇒
       persistUpdateIf(userHasRetweeted(cmd.userId))(
-        RetweeterRemovedEvent(persistenceId, cmd.userId),
-        RetweeterNotFound(persistenceId, cmd.userId))
+        TweetRepostDeletedEvent(persistenceId, cmd.userId),
+        RepostNotFound(persistenceId, cmd.userId))
 
-    case cmd: AddLikerCommand ⇒
-      persistUpdateIf(userHasNotLiked(cmd.userId))(
-        LikerAddedEvent(persistenceId, cmd.userId),
-        DuplicateLike(persistenceId, cmd.userId))
-
-    case cmd: RemoveLikerCommand ⇒
-      persistUpdateIf(userHasLiked(cmd.userId))(
-        LikerRemovedEvent(persistenceId, cmd.userId),
-        LikerNotFound(persistenceId, cmd.userId))
-
-    case DeleteTweetCommand ⇒
-      persist(TweetDeletedEvent(persistenceId)) { _ ⇒
+    case cmd: DeleteTweetCommand ⇒
+      persist(TweetDeletedEvent(persistenceId, cmd.authorId, cmd.repostedBy)) { _ ⇒
         handleDeletion()
         reportSuccess(true)
       }
   }
 
-  private def timestamp = System.currentTimeMillis()
+  override def notFound: Exception = TweetNotFound(persistenceId)
 
   private def userHasRetweeted(userId: String)(thisTweet: Tweet) =
-    thisTweet.retweeters.contains(userId)
+    thisTweet.repostedBy.contains(userId)
 
   private def userHasNotRetweeted(userId: String)(thisTweet: Tweet) =
     !userHasRetweeted(userId)(thisTweet)
 
-  private def userHasLiked(userId: String)(thisTweet: Tweet) =
-    thisTweet.likers.contains(userId)
-
-  private def userHasNotLiked(userId: String)(thisTweet: Tweet) =
-    !userHasLiked(userId)(thisTweet)
-
-  override def notFound(id: String): Exception = TweetNotFound(id)
+  private def currentTimestamp: Long = System.currentTimeMillis()
 }
 
 object TweetProcessor {
-  def apply(persistenceId: String) = new TweetProcessor(persistenceId)
+  import akka.actor.Props
+
+  def props(persistenceId: String): Props = Props(new TweetProcessor(persistenceId))
 }

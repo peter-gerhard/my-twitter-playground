@@ -1,57 +1,47 @@
 package de.htw.pgerhard.domain.users
 
-import de.htw.pgerhard.domain.generic.AggregateRootProcessor
-import de.htw.pgerhard.domain.users.UserCommands._
-import de.htw.pgerhard.domain.users.UserErrors._
-import de.htw.pgerhard.domain.users.UserEvents._
+import de.htw.pgerhard.domain.generic.{AggregateRootFactory, AggregateRootProcessor}
+import de.htw.pgerhard.domain.users.commands._
+import de.htw.pgerhard.domain.users.errors._
+import de.htw.pgerhard.domain.users.events._
 
-class UserProcessor(override val persistenceId: String) extends AggregateRootProcessor[User] {
+class UserProcessor(val persistenceId: String) extends AggregateRootProcessor[User, UserEvent] {
 
-  override type CreatedEvent = UserRegisteredEvent
-
-  override def aggregateRootFactory: UserRegisteredEvent => User = User.fromEvent
-
-  override def notFound(id: String) = UserNotFound(id)
+  override def factory: AggregateRootFactory[User, UserEvent] = User
 
   override def receiveRecover: Receive = {
-    case event: UserRegisteredEvent ⇒ handleCreation(event)
-    case _: UserDeletedEvent ⇒ handleDeletion()
-    case event: UserEvent ⇒ handleUpdate(event)
+    case ev: UserRegisteredEvent  ⇒ handleCreation(ev)
+    case ev: UserDeletedEvent     ⇒ handleDeletion()
+    case ev: UserEvent            ⇒ handleUpdate(ev)
   }
 
-  override def receiveBeforeInitialization: Receive = {
+  override def uninitialized: Receive = {
     case cmd: RegisterUserCommand ⇒
-      persist(UserRegisteredEvent(persistenceId, cmd.handle, cmd.name)) { event ⇒
-        handleCreation(event)
+      persist(UserRegisteredEvent(persistenceId, cmd.handle, cmd.name)) { ev ⇒
+        handleCreation(ev)
         reportState()
       }
-    case _: UserCommand ⇒
-      reportState()
+
+    case _ ⇒
+      reportFailure(notFound)
   }
 
-  override def receiveWhenInitialized: Receive = {
+  override def initialized: Receive = {
+    case cmd: RegisterUserCommand ⇒
+      reportFailure(UserAlreadyExists(persistenceId))
+
     case cmd: SetUserNameCommand ⇒
       persistUpdate(UserNameSetEvent(persistenceId, cmd.name))
 
-    case cmd: FollowUserCommand ⇒
-      persistUpdateIf(isNotFollowing(cmd.userId))(
-        UserFollowedEvent(persistenceId, cmd.userId),
-        UserAlreadyFollows(persistenceId, cmd.userId))
+    case cmd: AddSubscriptionCommand ⇒
+      persistUpdateIf(isNotFollowing(cmd.subscriptionId))(
+        UserSubscriptionAddedEvent(persistenceId, cmd.subscriptionId),
+        UserAlreadySubscribed(persistenceId, cmd.subscriptionId))
 
-    case cmd: UnfollowUserCommand ⇒
-      persistUpdateIf(isFollowing(cmd.userId))(
-        UserUnfollowedEvent(persistenceId, cmd.userId),
-        FollowingNotFound(persistenceId, cmd.userId))
-
-    case cmd: AddFollowerCommand ⇒
-      persistUpdateIf(isNotFollower(cmd.userId))(
-        FollowerAddedEvent(persistenceId, cmd.userId),
-        UserAlreadyFollows(cmd.userId, persistenceId))
-
-    case cmd: RemoveFollowerCommand ⇒
-      persistUpdateIf(isFollower(cmd.userId))(
-        FollowerRemovedEvent(persistenceId, cmd.userId),
-        FollowerNotFound(persistenceId, cmd.userId))
+    case cmd: RemoveSubscriptionCommand ⇒
+      persistUpdateIf(isFollowing(cmd.subscriptionId))(
+        UserSubscriptionRemovedEvent(persistenceId, cmd.subscriptionId),
+        SubscriptionNotFound(persistenceId, cmd.subscriptionId))
 
     case DeleteUserCommand ⇒
       persist(UserDeletedEvent(persistenceId)) { _ ⇒
@@ -60,19 +50,17 @@ class UserProcessor(override val persistenceId: String) extends AggregateRootPro
       }
   }
 
+  override def notFound: Exception = UserNotFound(persistenceId)
+
   private def isFollowing(userId: String)(thisUser: User) =
-    thisUser.following.contains(userId)
+    thisUser.subscriptions.contains(userId)
 
   private def isNotFollowing(userId: String)(thisUser: User) =
     !isFollowing(userId)(thisUser)
-
-  private def isFollower(userId: String)(thisUser: User) =
-    thisUser.followers.contains(userId)
-
-  private def isNotFollower(userId: String)(thisUser: User) =
-    !isFollower(userId)(thisUser)
 }
 
 object UserProcessor {
-  def apply(id: String) = new UserProcessor(id)
+  import akka.actor.Props
+
+  def props(persistenceId: String): Props = Props(new UserProcessor(persistenceId))
 }

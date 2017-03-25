@@ -3,69 +3,59 @@ package de.htw.pgerhard.domain.generic
 import akka.actor.ActorLogging
 import akka.actor.Status.{Failure, Success}
 import akka.persistence.PersistentActor
-import de.htw.pgerhard.domain.{Get, GetOpt}
 
-trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with ActorLogging {
-
-  type CreatedEvent <: Event[A]
+trait AggregateRootProcessor[A <: AggregateRoot[A, Ev], Ev <: Event]
+  extends PersistentActor with ActorLogging {
 
   def persistenceId: String
-  def aggregateRootFactory: (CreatedEvent) ⇒ A
+
+  def factory: AggregateRootFactory[A, Ev]
+
   def receiveRecover: Receive
-  def receiveBeforeInitialization: Receive
-  def receiveWhenInitialized: Receive
-  def notFound(id: String): Exception
 
-  var state: Option[A] = None
+  def uninitialized: Receive
 
-  override def receiveCommand: Receive = receiveBeforeInitialization orElse default
+  def initialized: Receive
 
-  private def default: Receive = {
-    case Get ⇒
-      reportState()
-    case GetOpt ⇒
-      reportSuccess(state)
-  }
+  def notFound: Exception
 
-  protected def handleCreation(event: CreatedEvent): Unit = {
-    state = Some(aggregateRootFactory(event))
-    becomeInitialized()
-  }
+  protected var state: Option[A] = None
 
-  protected def handleUpdate(event: Event[A]): Unit = {
-    state = state.map(_.updated(event))
-  }
-
-  protected def handleDeletion(): Unit = {
-    state = None
-    becomeUninitialized()
-  }
-
-  private def becomeInitialized(): Unit =
-    context.become(receiveWhenInitialized orElse default)
-
-  private def becomeUninitialized(): Unit =
-    context.become(receiveBeforeInitialization orElse default)
+  override def receiveCommand: Receive = uninitialized
 
   override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
     log.debug(reason.getMessage)
     super.preRestart(reason, message)
   }
 
-  protected def persistUpdate(event: Event[A]): Unit =
+  protected def handleCreation(ev: Ev): Unit = {
+    state = Some(factory.fromCreatedEvent(ev))
+    context.become(initialized)
+  }
+
+  protected def handleUpdate(ev: Ev): Unit = {
+    state = state.map(_.updated(ev))
+  }
+
+  protected def handleDeletion(): Unit = {
+    state = None
+    context.become(uninitialized)
+  }
+
+  protected def persistUpdate(ev: Ev): Unit =
     state
-      .fold(reportFailure(notFound(persistenceId))) { s ⇒
-        persist(event) { event ⇒
+      .fold(reportFailure(notFound)) { s ⇒
+        persist(ev) { event ⇒
           handleUpdate(event)
           reportState()
         }
       }
 
-  protected def persistUpdateIf(condition: A ⇒ Boolean)(event: ⇒ Event[A], error: ⇒ Exception): Unit =
+  protected def persistUpdateIf(condition: A ⇒ Boolean)(ev: ⇒ Ev, error: ⇒ Exception): Unit =
     state.filter(condition)
       .fold(reportFailure(error)) { s ⇒
-        persist(event) { event ⇒
-          handleUpdate(event)
+        persist(ev) { ev ⇒
+          handleUpdate(ev)
           reportState()
         }
       }
@@ -77,5 +67,5 @@ trait AggregateRootProcessor[A <: AggregateRoot[A]] extends PersistentActor with
     sender ! Failure(e)
 
   protected def reportState(): Unit =
-    state.fold(reportFailure(notFound(persistenceId)))(reportSuccess)
+    state.fold(reportFailure(notFound))(reportSuccess)
 }
