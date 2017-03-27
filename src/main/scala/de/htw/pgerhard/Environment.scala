@@ -1,11 +1,18 @@
 package de.htw.pgerhard
 
+import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
+import akka.persistence.query.PersistenceQuery
+import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.ActorMaterializer
+import akka.stream.actor.ActorSubscriber
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
+import de.htw.pgerhard.domain.generic.Event
 import de.htw.pgerhard.domain.timelines.{HomeTimelineView, HomeTimelineViewActor, UserTimelineView, UserTimelineViewActor}
 import de.htw.pgerhard.domain.tweets._
 import de.htw.pgerhard.domain.users._
+import de.htw.pgerhard.domain.users.events.UserEvent
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
@@ -37,18 +44,46 @@ class DefaultEnvironment extends Environment {
 
   implicit val timeout = Timeout(5 seconds)
 
-  override val users = new UserView(actorSystem.actorOf(UserViewActor.props))
+  private val userViewActor = actorSystem.actorOf(UserViewActor.props)
+  override val users = new UserView(userViewActor)
 
-  override val tweets = new TweetView(actorSystem.actorOf(TweetViewActor.props))
+  private val tweetViewActor = actorSystem.actorOf(TweetViewActor.props)
+  override val tweets = new TweetView(tweetViewActor)
 
-  override val userTimelines = new UserTimelineView(actorSystem.actorOf(UserTimelineViewActor.props))
+  private val userTimelineViewActor = actorSystem.actorOf(UserTimelineViewActor.props)
+  override val userTimelines = new UserTimelineView(userTimelineViewActor)
 
-  override val homeTimelines = new HomeTimelineView(actorSystem.actorOf(HomeTimelineViewActor.props))
-
+  private val homeTimelineViewActor = actorSystem.actorOf(HomeTimelineViewActor.props)
+  override val homeTimelines = new HomeTimelineView(homeTimelineViewActor)
 
   val userRepository = new UserRepository(actorSystem.actorOf(UserRepositoryActor.props))
   val userCommands = new UserCommandService(userRepository)
 
   val tweetRepository = new TweetRepository(actorSystem.actorOf(TweetRepositoryActor.props))
   val tweetCommands = new TweetCommandService(users, tweets, tweetRepository)
+
+  val readJournal: LeveldbReadJournal =
+    PersistenceQuery(actorSystem)
+      .readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
+
+  readJournal.eventsByTag("user-event")
+    .map(_.event.asInstanceOf[Event])
+    .runWith(Sink.fromSubscriber(ActorSubscriber[Event](userViewActor)))
+
+  readJournal.eventsByTag("tweet-event")
+    .map(_.event.asInstanceOf[Event])
+    .runWith(Sink.fromSubscriber(ActorSubscriber[Event](tweetViewActor)))
+
+  readJournal.eventsByTag("tweet-event")
+    .merge(readJournal.eventsByTag("user-deleted"))
+    .map(_.event.asInstanceOf[Event])
+    .runWith(Sink.fromSubscriber(ActorSubscriber[Event](userTimelineViewActor)))
+
+  readJournal.eventsByTag("tweet-event")
+    .merge(readJournal.eventsByTag("user-subscription-added"))
+    .merge(readJournal.eventsByTag("user-subscription-removed"))
+    .merge(readJournal.eventsByTag("user-deleted"))
+    .map(_.event.asInstanceOf[Event])
+    .runWith(Sink.fromSubscriber(ActorSubscriber[Event](homeTimelineViewActor)))
+
 }

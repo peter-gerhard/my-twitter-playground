@@ -21,18 +21,21 @@ class HomeTimelineFeature extends MyTwitterFeature with MyTwitterSteps with With
 
       And the user("<user3>").tweets("Hello World 4")
 
-      When I query_home_timeline_for_user("<test-user>")
+      And the user("<user2>").retweets("<tweet[3]>")
 
-      And I show_last_response_json
+      eventually {
+        When I query_home_timeline_for_user("<test-user>")
 
-      Then assert body.path("data.homeTimeline").asArray.is(
-        """
-        |  author                |  body            |
-        |  {"id": "<user1-id>"}  | "Hello World 1"  |
-        |  {"id": "<user2-id>"}  | "Hello World 2"  |
-        |  {"id": "<user1-id>"}  | "Hello World 3"  |
-        |  {"id": "<user3-id>"}  | "Hello World 4"  |
-        """)
+        Then assert body.path("data.homeTimeline.tweets").asArray.inOrder.is(
+          """
+            |  tweet                    |  author                |  reposter             |
+            |  {"id": "<tweet-id[3]>"}  |  {"id": "<user3-id>"}  | {"id": "<user2-id>"}  |
+            |  {"id": "<tweet-id[3]>"}  |  {"id": "<user3-id>"}  | null                  |
+            |  {"id": "<tweet-id[2]>"}  |  {"id": "<user1-id>"}  | null                  |
+            |  {"id": "<tweet-id[1]>"}  |  {"id": "<user2-id>"}  | null                  |
+            |  {"id": "<tweet-id[0]>"}  |  {"id": "<user1-id>"}  | null                  |
+          """)
+      }
     }
   }
 }

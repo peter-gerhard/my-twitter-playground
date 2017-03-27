@@ -1,5 +1,6 @@
 package de.htw.pgerhard.domain.tweets
 
+import akka.actor.Status.Failure
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic._
@@ -41,7 +42,7 @@ class TweetViewActor extends View {
 
   override protected def receiveClientMessage: Receive = {
     case msg: GetById ⇒
-      sender() ! tweets.getOrElse(msg.id, TweetNotFound(msg.id))
+      sender() ! tweets.getOrElse(msg.id, Failure(TweetNotFound(msg.id)))
 
     case msg: GetOptById ⇒
       sender() ! tweets.get(msg.id)

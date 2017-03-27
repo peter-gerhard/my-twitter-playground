@@ -1,11 +1,12 @@
 package de.htw.pgerhard.domain.timelines
 
+import akka.actor.Status.Failure
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic._
 import de.htw.pgerhard.domain.tweets.events._
 import de.htw.pgerhard.domain.users.errors.UserNotFound
-import de.htw.pgerhard.domain.users.events.{UserDeletedEvent, UserRegisteredEvent, UserSubscriptionAddedEvent, UserSubscriptionRemovedEvent}
+import de.htw.pgerhard.domain.users.events.{UserDeletedEvent, UserSubscriptionAddedEvent, UserSubscriptionRemovedEvent}
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -26,10 +27,10 @@ class HomeTimelineViewActor extends View {
 
   override protected def handleEvent: EventHandler = {
     case ev: UserSubscriptionAddedEvent ⇒
-      userSubscribers(ev.subscriptionId) = userSubscribers(ev.subscriptionId).withAdditionalSubscriber(ev.userId)
+      updateSubscribers(ev.subscriptionId, _.withAdditionalSubscriber(ev.userId))
 
     case ev: UserSubscriptionRemovedEvent ⇒
-      userSubscribers(ev.subscriptionId) = userSubscribers(ev.subscriptionId).withRemovedSubscriber(ev.userId)
+      updateSubscribers(ev.subscriptionId, _.withRemovedSubscriber(ev.userId))
 
     case ev: TweetPostedEvent ⇒
       val tweet = TweetLike(ev.tweetId, ev.authorId)
@@ -53,16 +54,15 @@ class HomeTimelineViewActor extends View {
         updateTimeline(subscriberId, _.withRemovedTweet(ev.tweetId))
       }
 
-    case ev: UserRegisteredEvent ⇒
-      timelines(ev.userId) = HomeTimeline(ev.userId, Seq.empty)
-
     case ev: UserDeletedEvent ⇒
       timelines.remove(ev.userId)
+
+    case _ ⇒
   }
 
   override protected def receiveClientMessage: Receive = {
     case msg: GetById ⇒
-      sender() ! timelines.getOrElse(msg.id, UserNotFound(msg.id))
+      sender() ! timelines.getOrElse(msg.id, Failure(UserNotFound(msg.id)))
 
     case msg: GetOptById ⇒
       sender() ! timelines.get(msg.id)
@@ -77,7 +77,16 @@ class HomeTimelineViewActor extends View {
   }
 
   private def updateTimeline(userId: String, fn: HomeTimeline ⇒ HomeTimeline) =
-    timelines(userId) = fn(timelines(userId))
+    timelines(userId) = fn(timelines.getOrElse(userId, newTimeline(userId)))
+
+  private def updateSubscribers(userId: String, fn: UserSubscribers ⇒ UserSubscribers) =
+    userSubscribers(userId) = fn(userSubscribers.getOrElse(userId, newUserSubscribers))
+
+  private def newTimeline(id: String) =
+    HomeTimeline(id, Seq.empty)
+
+  private def newUserSubscribers =
+    UserSubscribers(Set.empty)
 }
 
 object HomeTimelineViewActor {

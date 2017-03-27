@@ -1,6 +1,6 @@
 package de.htw.pgerhard.domain.users
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ActorLogging, ActorRef, Props}
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic.{Envelope, Repository, RepositoryConnector}
 import de.htw.pgerhard.domain.users.commands._
@@ -30,16 +30,16 @@ class UserRepository(
     askRepo(userId, DeleteUserCommand).mapTo[Boolean]
 }
 
-class UserRepositoryActor extends Repository {
+class UserRepositoryActor extends Repository with ActorLogging {
 
   override protected def childProps(id: String): Props = UserProcessor.props(id)
 
   override def receive: Receive = {
     case cmd: RegisterUserCommand ⇒
-      getChild(randomId) ! cmd
+      getChild(randomId) forward cmd
 
     case env: Envelope ⇒
-      getChild(env.id) ! env.msg
+      getChild(env.id) forward env.msg
   }
 }
 

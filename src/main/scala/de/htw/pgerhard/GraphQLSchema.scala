@@ -106,7 +106,7 @@ object GraphQLSchema {
   lazy val UserTimelineType: ObjectType[Environment, UserTimeline] =
     ObjectType("UserTimeline", "The user-timeline of a user",
       () ⇒ fields[Environment, UserTimeline](
-        Field("userId", UserType,
+        Field("user", UserType,
           Some("The user this timeline belongs to."),
           resolve = ctx ⇒ users.defer(ctx.value.userId)),
         Field("tweets", ListType(TweetLikeType),
@@ -119,7 +119,7 @@ object GraphQLSchema {
   lazy val HomeTimelineType: ObjectType[Environment, HomeTimeline] =
     ObjectType("UserTimeline", "The user-timeline of a user",
       () ⇒ fields[Environment, HomeTimeline](
-        Field("userId", UserType,
+        Field("user", UserType,
           Some("The user this timeline belongs to."),
           resolve = ctx ⇒ users.defer(ctx.value.userId)),
         Field("tweets", ListType(TweetLikeType),
@@ -135,8 +135,8 @@ object GraphQLSchema {
         Field("author", UserType,
           Some("The author of the tweet."),
           resolve = ctx ⇒ users.defer(ctx.value.authorId)),
-        Field("user", OptionType(UserType),
-          Some("The user who reposted the tweet.."),
+        Field("reposter", OptionType(UserType),
+          Some("The user who reposted the tweet."),
           resolve = ctx ⇒ users.deferOpt(ctx.value.reposterId))))
 
   val TweetIdArg = Argument("tweetId", StringType, description = "Id of a tweet")
@@ -189,9 +189,9 @@ object GraphQLSchema {
       Field("repostTweet", TweetCMType,
         arguments = TweetIdArg:: UserIdArg :: Nil,
         resolve = ctx ⇒ ctx.ctx.tweetCommands.repostTweet(ctx.arg(TweetIdArg), ctx.arg(UserIdArg))),
-      Field("deletRepost", TweetCMType,
+      Field("deleteRepost", TweetCMType,
         arguments = TweetIdArg:: UserIdArg :: Nil,
-        resolve = ctx ⇒ ctx.ctx.tweetCommands.deletRepost(ctx.arg(TweetIdArg), ctx.arg(UserIdArg))),
+        resolve = ctx ⇒ ctx.ctx.tweetCommands.deleteRepost(ctx.arg(TweetIdArg), ctx.arg(UserIdArg))),
       Field("deleteTweet", BooleanType,
         arguments = TweetIdArg :: Nil,
         resolve = ctx ⇒ ctx.ctx.tweetCommands.deleteTweet(ctx.arg(TweetIdArg)))))

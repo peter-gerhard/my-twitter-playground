@@ -19,7 +19,7 @@ class GraphQLRoute(
     private val ec: ExecutionContext) {
 
   private val exceptionHandler: Executor.ExceptionHandler = {
-    case (m, e) => HandledException(s"There was an internal server error.")
+    case (m, e) => HandledException(s"There was an internal server error. ${e.getMessage}")
   }
 
   private val executor = Executor(

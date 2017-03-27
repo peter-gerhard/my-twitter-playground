@@ -33,10 +33,10 @@ class TweetRepositoryActor extends Repository {
 
   override def receive: Receive = {
     case cmd: PostTweetCommand ⇒
-      getChild(randomId) ! cmd
+      getChild(randomId) forward cmd
 
     case env: Envelope ⇒
-      getChild(env.id) ! env.msg
+      getChild(env.id) forward env.msg
   }
 }
 

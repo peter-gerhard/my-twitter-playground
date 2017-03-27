@@ -10,18 +10,20 @@ class UserFeature extends MyTwitterFeature with MyTwitterSteps {
 
       When I register_a_user(handle = "@pgerhard", name = "Peter Gerhard", alias = "peter")
 
-      And I query_user("<peter>")
+      eventually {
+        When I query_user("<peter>")
 
-      Then assert body.path("data.user").is(
-        """
+        Then assert body.path("data.user").is(
+          """
         {
           "id": "<peter-id>",
           "handle": "@pgerhard",
           "name": "Peter Gerhard",
-          "following": [],
-          "followers": []
+          "subscriptions": [],
+          "subscribers": []
         }
         """)
+      }
 
       And afterwards delete_user("<peter>")
     }
@@ -45,19 +47,24 @@ class UserFeature extends MyTwitterFeature with MyTwitterSteps {
 
       And the user("<peter>").follows("<hans>")
 
-      Then assert body.path("data.followUser.following").is("""[{ "id": "<hans>" }]""")
+      Then assert body.path("data.addSubscription.subscriptions").is("""[{ "id": "<hans>" }]""")
 
-      When I query_user("<hans>")
+      eventually {
+        When I query_user("<hans>")
 
-      Then assert body.path("data.user.followers").is("""[{ "id": "<peter>" }]""")
+        Then assert body.path("data.user.subscribers").is("""[{ "id": "<peter>" }]""")
+      }
+
 
       When the user("<peter>").unfollows("<hans>")
 
-      Then assert body.path("data.unfollowUser.following").asArray.isEmpty
+      Then assert body.path("data.removeSubscription.subscriptions").asArray.isEmpty
 
-      When I query_user("<hans>")
+      eventually {
+        When I query_user("<hans>")
 
-      Then assert body.path("data.user.followers").asArray.isEmpty
+        Then assert body.path("data.user.subscribers").asArray.isEmpty
+      }
 
       And afterwards delete_user("<peter>")
 

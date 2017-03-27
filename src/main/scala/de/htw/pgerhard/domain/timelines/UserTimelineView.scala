@@ -1,11 +1,12 @@
 package de.htw.pgerhard.domain.timelines
 
+import akka.actor.Status.Failure
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic._
 import de.htw.pgerhard.domain.tweets.events._
 import de.htw.pgerhard.domain.users.errors.UserNotFound
-import de.htw.pgerhard.domain.users.events.{UserDeletedEvent, UserRegisteredEvent}
+import de.htw.pgerhard.domain.users.events.UserDeletedEvent
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -36,16 +37,15 @@ class UserTimelineViewActor extends View {
     case ev: TweetDeletedEvent ⇒
       updateTimeline(ev.authorId, _.withRemovedTweet(ev.tweetId)) // Todo delete all retweets
 
-    case ev: UserRegisteredEvent ⇒
-      timelines(ev.userId) = UserTimeline(ev.userId, Seq.empty, Seq.empty)
-
     case ev: UserDeletedEvent ⇒
       timelines.remove(ev.userId)
+
+    case _ ⇒
   }
 
   override protected def receiveClientMessage: Receive = {
     case msg: GetById ⇒
-      sender() ! timelines.getOrElse(msg.id, UserNotFound(msg.id))
+      sender() ! timelines.getOrElse(msg.id, Failure(UserNotFound(msg.id)))
 
     case msg: GetOptById ⇒
       sender() ! timelines.get(msg.id)
@@ -55,7 +55,10 @@ class UserTimelineViewActor extends View {
   }
 
   private def updateTimeline(userId: String, fn: UserTimeline ⇒ UserTimeline) =
-    timelines(userId) = fn(timelines(userId))
+    timelines(userId) = fn(timelines.getOrElse(userId, newTimeline(userId)))
+
+  private def newTimeline(id: String) =
+    UserTimeline(id, Seq.empty, Seq.empty)
 }
 
 object UserTimelineViewActor {

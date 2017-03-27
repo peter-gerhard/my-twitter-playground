@@ -20,7 +20,7 @@ class TweetCommandService(
       result ← tweetRepository.repostTweet(tweetId, userId, tweet.authorId)
     } yield result
 
-  def deletRepost(tweetId: String, userId: String): Future[Tweet] =
+  def deleteRepost(tweetId: String, userId: String): Future[Tweet] =
     tweetRepository.deleteRepost(tweetId, userId)
 
   def deleteTweet(tweetId: String): Future[Boolean] =

@@ -21,8 +21,26 @@ trait MyTwitterSteps {
                 id
                 handle
                 name
-                following { id },
-                followers { id }
+                subscriptions { id },
+                subscribers { id }
+              }
+            }
+          """)
+
+      And assert status.is(200)
+    }
+
+  def query_tweet(id: String): Step =
+    AttachAs(s"query tweet '$id'.") {
+
+      When I query_gql("/graphql")
+        .withVariables(
+          "tweetId" → id)
+        .withQuery(
+          graphql"""
+            query QueryTweet($$tweetId: String!) {
+              tweet(tweetId: $$tweetId) {
+                repostCount
               }
             }
           """)
@@ -74,34 +92,15 @@ trait MyTwitterSteps {
           "userId" → id)
         .withQuery(
           graphql"""
-            query QueryTimeline($$userId: String!) {
-              timeline(userId: $$userId) {
-                id
-                userId
+            query QueryUserTimeline($$userId: String!) {
+              userTimeline(userId: $$userId) {
+                user { id }
                 tweets {
-                  ... on Retweet {
-                    tweet {
-                      ... tweetFields
-                    }
-                    user { id }
-                  }
-
-                  ... on TweetRef {
-                    tweet {
-                      ... tweetFields
-                    }
-                  }
-
+                  tweet { id }
+                  author { id }
+                  reposter { id }
                 }
               }
-            }
-
-            fragment tweetFields on Tweet {
-              id
-              author {
-                id
-              }
-              retweetCount
             }
           """)
 
@@ -117,8 +116,11 @@ trait MyTwitterSteps {
           graphql"""
             query QueryHomeTimeline($$userId: String!) {
               homeTimeline(userId: $$userId) {
-                author { id }
-                body
+                tweets {
+                  tweet { id }
+                  author { id }
+                  reposter { id }
+                }
               }
             }
           """)
@@ -146,17 +148,17 @@ trait MyTwitterSteps {
         And assert status.is(200)
     }
 
-    def follows(followingId: String): Step =
-      AttachAs(s"user '$userId' follows user '$followingId'.") {
+    def follows(subscriptionId: String): Step =
+      AttachAs(s"user '$userId' follows user '$subscriptionId'.") {
         When I query_gql("/graphql")
           .withVariables(
             "userId" → userId,
-            "followingId" → followingId)
+            "subscriptionId" → subscriptionId)
           .withQuery(
             graphql"""
-              mutation FollowUser($$userId: String!, $$followingId: String!) {
-                followUser(userId: $$userId, followingId: $$followingId) {
-                  following { id }
+              mutation FollowUser($$userId: String!, $$subscriptionId: String!) {
+                addSubscription(userId: $$userId, subscriptionId: $$subscriptionId) {
+                  subscriptions { id }
                 }
               }
             """)
@@ -164,17 +166,17 @@ trait MyTwitterSteps {
         And assert status.is(200)
     }
 
-    def unfollows(followingId: String): Step =
-      AttachAs(s"user '$userId' unfollows user '$followingId'.") {
+    def unfollows(subscriptionId: String): Step =
+      AttachAs(s"user '$userId' unfollows user '$subscriptionId'.") {
         When I query_gql("/graphql")
           .withVariables(
             "userId" → userId,
-            "followingId" → followingId)
+            "subscriptionId" → subscriptionId)
           .withQuery(
             graphql"""
-              mutation UnfollowUser($$userId: String!, $$followingId: String!) {
-                unfollowUser(userId: $$userId, followingId: $$followingId) {
-                  following { id }
+              mutation UnfollowUser($$userId: String!, $$subscriptionId: String!) {
+                removeSubscription(userId: $$userId, subscriptionId: $$subscriptionId) {
+                  subscriptions { id }
                 }
               }
             """)
@@ -186,18 +188,16 @@ trait MyTwitterSteps {
       AttachAs(s"user '$userId' posts a tweet") {
         When I query_gql("/graphql")
           .withVariables(
-            "userId" → userId,
+            "authorId" → userId,
             "body"→ body)
           .withQuery(
             graphql"""
-              mutation PostTweet($$userId: String!, $$body: String!) {
-                postTweet(userId: $$userId, body: $$body) {
+              mutation PostTweet($$authorId: String!, $$body: String!) {
+                postTweet(authorId: $$authorId, body: $$body) {
                   id
                   author { id }
                   body
                   timestamp
-                  likeCount
-                  retweetCount
                 }
               }
             """)
@@ -212,12 +212,11 @@ trait MyTwitterSteps {
       AttachAs(s"user '$userId' deletes tweet '$tweetId'.") {
         When I query_gql("/graphql")
           .withVariables(
-            "userId" → userId,
             "tweetId" → tweetId)
           .withQuery(
             graphql"""
-              mutation DeleteTweet($$userId: String!, $$tweetId: String!) {
-                deleteTweet(userId: $$userId, tweetId: $$tweetId)
+              mutation DeleteTweet($$tweetId: String!) {
+                deleteTweet(tweetId: $$tweetId)
               }
             """)
 
@@ -232,10 +231,9 @@ trait MyTwitterSteps {
             "tweetId" → tweetId)
           .withQuery(
             graphql"""
-              mutation PostRetweet($$userId: String!, $$tweetId: String!) {
-                postRetweet(userId: $$userId, tweetId: $$tweetId) {
-                  tweet { id }
-                  user { id }
+              mutation PostRetweet($$tweetId: String!, $$userId: String!) {
+                repostTweet(tweetId: $$tweetId, userId: $$userId) {
+                  id
                 }
               }
             """)
@@ -251,8 +249,10 @@ trait MyTwitterSteps {
             "tweetId" → tweetId)
           .withQuery(
             graphql"""
-              mutation DeleteRetweet($$userId: String!, $$tweetId: String!) {
-                deleteRetweet(userId: $$userId, tweetId: $$tweetId)
+              mutation DeleteRetweet($$tweetId: String!, $$userId: String!) {
+                deleteRepost(tweetId: $$tweetId, userId: $$userId) {
+                  id
+                }
               }
             """)
 

@@ -1,5 +1,6 @@
 package de.htw.pgerhard.domain.users
 
+import akka.actor.Status.Failure
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic._
@@ -45,7 +46,7 @@ class UserViewActor extends View {
 
   override protected def receiveClientMessage: Receive = {
     case msg: GetById ⇒
-      sender() ! users.getOrElse(msg.id, UserNotFound(msg.id))
+      sender() ! users.getOrElse(msg.id, Failure(UserNotFound(msg.id)))
 
     case msg: GetOptById ⇒
       sender() ! users.get(msg.id)
