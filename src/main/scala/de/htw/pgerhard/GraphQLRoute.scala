@@ -3,14 +3,14 @@ package de.htw.pgerhard
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
+import akka.http.scaladsl.server.Route
 import sangria.execution.deferred.DeferredResolver
 import sangria.execution.{ErrorWithResolver, Executor, HandledException, QueryAnalysisError}
 import sangria.marshalling.sprayJson._
 import sangria.parser.QueryParser
 import spray.json._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 class GraphQLRoute(

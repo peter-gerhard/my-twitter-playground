@@ -44,5 +44,5 @@ class UserRepositoryActor extends Repository with ActorLogging {
 }
 
 object UserRepositoryActor {
-  def props: Props = Props(new UserRepositoryActor)
+  def apply() = new UserRepositoryActor
 }

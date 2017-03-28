@@ -10,6 +10,7 @@ scalacOptions := Seq(
   "-deprecation",
   "-Ywarn-dead-code",
   "-Ywarn-value-discard",
+  "-Ywarn-unused-import",
   "-Ywarn-unused")
 
 libraryDependencies ++= Seq(

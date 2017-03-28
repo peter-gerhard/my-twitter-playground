@@ -1,6 +1,6 @@
 package de.htw.pgerhard.domain.users
 
-import de.htw.pgerhard.domain.generic.{AggregateRoot, AggregateRootFactory, Event}
+import de.htw.pgerhard.domain.generic.{AggregateRoot, AggregateRootFactory}
 import de.htw.pgerhard.domain.users.events._
 
 case class User(

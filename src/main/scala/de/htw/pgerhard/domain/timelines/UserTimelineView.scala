@@ -1,7 +1,7 @@
 package de.htw.pgerhard.domain.timelines
 
 import akka.actor.Status.Failure
-import akka.actor.{ActorRef, Props}
+import akka.actor.ActorRef
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic._
 import de.htw.pgerhard.domain.tweets.events._
@@ -26,16 +26,16 @@ class UserTimelineViewActor extends View {
 
   override protected def handleEvent: EventHandler = {
     case ev: TweetPostedEvent ⇒
-      updateTimeline(ev.authorId, _.withAdditionalTweet(TweetLike(ev.tweetId, ev.authorId)))
+      updateTimeline(ev.authorId)(_.withAdditionalTweet(TweetLike(ev.tweetId, ev.authorId)))
 
     case ev: TweetRepostedEvent ⇒
-      updateTimeline(ev.userId, _.withAdditionalTweet(TweetLike(ev.tweetId, ev.authorId, Some(ev.userId))))
+      updateTimeline(ev.userId)(_.withAdditionalTweet(TweetLike(ev.tweetId, ev.authorId, Some(ev.userId))))
 
     case ev: TweetRepostDeletedEvent ⇒
-      updateTimeline(ev.userId, _.withRemovedTweet(ev.tweetId))
+      updateTimeline(ev.userId)(_.withRemovedTweet(ev.tweetId))
 
     case ev: TweetDeletedEvent ⇒
-      updateTimeline(ev.authorId, _.withRemovedTweet(ev.tweetId)) // Todo delete all retweets
+      updateTimeline(ev.authorId)(_.withRemovedTweet(ev.tweetId)) // Todo delete all retweets
 
     case ev: UserDeletedEvent ⇒
       timelines.remove(ev.userId)
@@ -54,15 +54,12 @@ class UserTimelineViewActor extends View {
       sender() ! msg.ids.flatMap(timelines.get)
   }
 
-  private def updateTimeline(userId: String, fn: UserTimeline ⇒ UserTimeline) =
-    timelines(userId) = fn(timelines.getOrElse(userId, newTimeline(userId)))
-
-  private def newTimeline(id: String) =
-    UserTimeline(id, Seq.empty, Seq.empty)
+  private def updateTimeline(userId: String)(fn: UserTimeline ⇒ UserTimeline) =
+    timelines(userId) = fn(timelines.getOrElse(userId, UserTimeline(userId)))
 }
 
 object UserTimelineViewActor {
-  def props: Props = Props(new UserTimelineViewActor)
+  def apply() = new UserTimelineViewActor
 }
 
 case class UserTimeline(
@@ -75,4 +72,8 @@ case class UserTimeline(
 
   def withRemovedTweet(tweetId: String): UserTimeline =
     copy(tweets = tweets.filter(_.tweetId != tweetId))
+}
+
+object UserTimeline {
+  def apply(userId: String): UserTimeline = UserTimeline(userId, Seq.empty, Seq.empty)
 }

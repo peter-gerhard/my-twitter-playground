@@ -1,7 +1,7 @@
 package de.htw.pgerhard.domain.timelines
 
 import akka.actor.Status.Failure
-import akka.actor.{ActorRef, Props}
+import akka.actor.ActorRef
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic._
 import de.htw.pgerhard.domain.tweets.events._
@@ -77,25 +77,19 @@ class HomeTimelineViewActor extends View {
   }
 
   private def updateTimeline(userId: String, fn: HomeTimeline ⇒ HomeTimeline) =
-    timelines(userId) = fn(timelines.getOrElse(userId, newTimeline(userId)))
+    timelines(userId) = fn(timelines.getOrElse(userId, HomeTimeline(userId)))
 
   private def updateSubscribers(userId: String, fn: UserSubscribers ⇒ UserSubscribers) =
-    userSubscribers(userId) = fn(userSubscribers.getOrElse(userId, newUserSubscribers))
-
-  private def newTimeline(id: String) =
-    HomeTimeline(id, Seq.empty)
-
-  private def newUserSubscribers =
-    UserSubscribers(Set.empty)
+    userSubscribers(userId) = fn(userSubscribers.getOrElse(userId, UserSubscribers()))
 }
 
 object HomeTimelineViewActor {
-  def props: Props = Props(new HomeTimelineViewActor)
+  def apply(): HomeTimelineViewActor = new HomeTimelineViewActor
 }
 
 case class HomeTimeline(
     userId: String,
-    tweets: Seq[TweetLike]) {
+    tweets: Seq[TweetLike] = Seq.empty) {
 
   def withAdditionalTweet(tweetLike: TweetLike): HomeTimeline =
     copy(tweets = tweetLike +: tweets)
@@ -104,7 +98,7 @@ case class HomeTimeline(
     copy(tweets = tweets.filter(_.tweetId != tweetId))
 }
 
-case class UserSubscribers(subscribers: Set[String]) {
+case class UserSubscribers(subscribers: Set[String] = Set.empty) {
 
   def withAdditionalSubscriber(subscriberId: String): UserSubscribers =
     copy(subscribers = subscribers + subscriberId)

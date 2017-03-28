@@ -41,5 +41,5 @@ class TweetRepositoryActor extends Repository {
 }
 
 object TweetRepositoryActor {
-  def props: Props = Props(new TweetRepositoryActor)
+  def apply(): TweetRepositoryActor = new TweetRepositoryActor
 }

@@ -1,18 +1,16 @@
 package de.htw.pgerhard
 
-import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.ActorMaterializer
 import akka.stream.actor.ActorSubscriber
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.Sink
 import akka.util.Timeout
 import de.htw.pgerhard.domain.generic.Event
-import de.htw.pgerhard.domain.timelines.{HomeTimelineView, HomeTimelineViewActor, UserTimelineView, UserTimelineViewActor}
+import de.htw.pgerhard.domain.timelines._
 import de.htw.pgerhard.domain.tweets._
 import de.htw.pgerhard.domain.users._
-import de.htw.pgerhard.domain.users.events.UserEvent
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
@@ -50,16 +48,16 @@ class DefaultEnvironment extends Environment {
   private val tweetViewActor = actorSystem.actorOf(TweetViewActor.props)
   override val tweets = new TweetView(tweetViewActor)
 
-  private val userTimelineViewActor = actorSystem.actorOf(UserTimelineViewActor.props)
+  private val userTimelineViewActor = actorSystem.actorOf(Props(UserTimelineViewActor()))
   override val userTimelines = new UserTimelineView(userTimelineViewActor)
 
-  private val homeTimelineViewActor = actorSystem.actorOf(HomeTimelineViewActor.props)
+  private val homeTimelineViewActor = actorSystem.actorOf(Props(HomeTimelineViewActor()))
   override val homeTimelines = new HomeTimelineView(homeTimelineViewActor)
 
-  val userRepository = new UserRepository(actorSystem.actorOf(UserRepositoryActor.props))
+  val userRepository = new UserRepository(actorSystem.actorOf(Props(UserRepositoryActor())))
   val userCommands = new UserCommandService(userRepository)
 
-  val tweetRepository = new TweetRepository(actorSystem.actorOf(TweetRepositoryActor.props))
+  val tweetRepository = new TweetRepository(actorSystem.actorOf(Props(TweetRepositoryActor())))
   val tweetCommands = new TweetCommandService(users, tweets, tweetRepository)
 
   val readJournal: LeveldbReadJournal =

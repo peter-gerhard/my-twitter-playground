@@ -6,7 +6,6 @@ import akka.util.Timeout
 import de.htw.pgerhard.domain.generic._
 import de.htw.pgerhard.domain.tweets.errors.TweetNotFound
 import de.htw.pgerhard.domain.tweets.events._
-import de.htw.pgerhard.domain.users.SimpleUser
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
